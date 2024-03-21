@@ -237,6 +237,7 @@ name = "issuer"
 version = "0.1.0"
 dependencies = [
  "josekit",
+ "rand",
  "sd-jwt-payload",
  "serde_json",
 ]

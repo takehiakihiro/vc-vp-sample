@@ -1,31 +1,28 @@
-// Copyright 2020-2024 IOTA Stiftung
-// SPDX-License-Identifier: Apache-2.0
-
-use std::error::Error;
-
 use josekit::jwk::alg::ed::EdKeyPair;
 use josekit::jws::{EdDSA, JwsHeader};
 use josekit::jwt::{self, JwtPayload};
-use sd_jwt_payload::{
-    Disclosure, KeyBindingJwtClaims, SdJwt, SdObjectDecoder, SdObjectEncoder, Sha256Hasher,
-    HEADER_TYP,
-};
+use sd_jwt_payload::{Disclosure, SdJwt, SdObjectEncoder, HEADER_TYP};
 use serde_json::{json, Value};
+use std::error::Error;
 
 fn main() -> Result<(), Box<dyn Error>> {
     const ISSUER_PRIVATE_KEY: &str = "issuer_private_key_ed25519.pem";
-    const ISSUER_PUBLIC_KEY: &str = "issuer_public_key_ed25519.pem";
     const HOLDER_PRIVATE_KEY: &str = "holder_private_key_ed25519.pem";
 
+    // ======================= Holder part =======================
     let private_pem_file_content = std::fs::read(HOLDER_PRIVATE_KEY)?;
     let key_pair = EdKeyPair::from_pem(private_pem_file_content)?;
     let jwk = key_pair.to_jwk_public_key();
     let pubkey_jwk = serde_json::from_str(&jwk.to_string())?;
+
+    // ======================= Issuer part =======================
     let account_name = "example_account";
     let ip_addresses = ["10.254.100.2", "fc00:ff00:0:a::100:2"];
     let dns_addresses = ["10.254.10.1", "fc00:ff00:0:a::10:1"];
     let route_networks = ["10.254.0.0/16", "fc00:ff00:0:a::/64"];
     let group_name = "example_group";
+    let real_name = "takehiakihiro";
+    let company = "freebit";
 
     let mut object = json!({
       "account_name": account_name,
@@ -33,6 +30,8 @@ fn main() -> Result<(), Box<dyn Error>> {
       "dns_addresses": dns_addresses,
       "route_networks": route_networks,
       "group_name": group_name,
+      "real_name": real_name,
+      "company": company,
     });
 
     if let Value::Object(ref mut map) = object {
@@ -46,11 +45,13 @@ fn main() -> Result<(), Box<dyn Error>> {
         encoder.conceal("/dns_addresses", None)?,
         encoder.conceal("/route_networks", None)?,
         encoder.conceal("/group_name", None)?,
+        encoder.conceal("/real_name", None)?,
+        encoder.conceal("/company", None)?,
     ];
 
     encoder.add_decoys("", 2)?; // Add decoys to the top level.
 
-    encoder.add_sd_alg_property();
+    // encoder.add_sd_alg_property();
 
     println!(
         "encoded object: {}",
@@ -60,7 +61,8 @@ fn main() -> Result<(), Box<dyn Error>> {
     // Create the JWT.
     // Creating JWTs is outside the scope of this library, josekit is used here as an example.
     let mut header = JwsHeader::new();
-    header.set_token_type(HEADER_TYP);
+    let token_type = format!("emotionlink+{}", HEADER_TYP);
+    header.set_token_type(token_type);
     header.set_algorithm("EdDSA"); // EdDSA署名アルゴリズムの指定
 
     // Use the encoded object as a payload for the JWT.
@@ -84,51 +86,10 @@ fn main() -> Result<(), Box<dyn Error>> {
         .map(|disclosure| disclosure.to_string())
         .collect();
 
-    let nonce = "nonce".to_string();
-    let audience = "el-server".to_string();
-    let hasher = Sha256Hasher::new();
-    let key_binding_jwt = KeyBindingJwtClaims::new(
-        &hasher,
-        jwt.clone(),
-        disclosures.clone(),
-        nonce,
-        audience,
-        0,
-    );
-
-    let holder_private_key = std::fs::read(HOLDER_PRIVATE_KEY).unwrap();
-    let signer = EdDSA.signer_from_pem(holder_private_key)?;
-    println!("loaded signer's private key");
-    let mut header = JwsHeader::new();
-    header.set_algorithm("EdDSA"); // EdDSA署名アルゴリズムの指定
-    header.set_token_type("kb+jwt");
-    let mut payload = JwtPayload::new();
-    payload.set_audience([key_binding_jwt.aud.clone()].to_vec());
-    let now = std::time::SystemTime::now();
-    payload.set_issued_at(&now);
-    payload.set_claim("nonce", Some(Value::String(key_binding_jwt.nonce)))?;
-    payload.set_claim("sd_hash", Some(Value::String(key_binding_jwt.sd_hash)))?;
-    let key_binding_jwt = jwt::encode_with_signer(&payload, &header, &signer)?;
-    println!("kb-jwt: {:?}", key_binding_jwt);
-
-    let sd_jwt: SdJwt = SdJwt::new(jwt, disclosures.clone(), Some(key_binding_jwt));
+    // TODO: disclosures の配列の中身をランダムに並べ替える
+    let sd_jwt: SdJwt = SdJwt::new(jwt.clone(), disclosures.clone(), None);
     let sd_jwt: String = sd_jwt.presentation();
+    println!("VC={}", sd_jwt);
 
-    println!("sd_jwt: {:?}", sd_jwt);
-
-    // Decoding the SD-JWT
-    // Extract the payload from the JWT of the SD-JWT after verifying the signature.
-    let sd_jwt: SdJwt = SdJwt::parse(&sd_jwt)?;
-    let public_key = std::fs::read(ISSUER_PUBLIC_KEY).unwrap();
-    let verifier = EdDSA.verifier_from_pem(public_key)?;
-    let (payload, _header) = jwt::decode_with_verifier(&sd_jwt.jwt, &verifier)?;
-
-    // Decode the payload by providing the disclosures that were parsed from the SD-JWT.
-    let decoder = SdObjectDecoder::new_with_sha256();
-    let decoded = decoder.decode(payload.claims_set(), &sd_jwt.disclosures)?;
-    println!(
-        "decoded object: {}",
-        serde_json::to_string_pretty(&decoded)?
-    );
     Ok(())
 }
