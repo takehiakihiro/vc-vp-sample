@@ -1,6 +1,8 @@
 use josekit::jwk::alg::ed::EdKeyPair;
 use josekit::jws::{EdDSA, JwsHeader};
 use josekit::jwt::{self, JwtPayload};
+use rand::seq::SliceRandom; // SliceRandomトレイトをインポート
+use rand::thread_rng; // 乱数生成器をインポート
 use sd_jwt_payload::{Disclosure, SdJwt, SdObjectEncoder, HEADER_TYP};
 use serde_json::{json, Value};
 use std::error::Error;
@@ -81,13 +83,18 @@ fn main() -> Result<(), Box<dyn Error>> {
     let jwt = jwt::encode_with_signer(&payload, &header, &signer)?;
 
     // Create an SD_JWT by collecting the disclosures and creating an `SdJwt` instance.
-    let disclosures: Vec<String> = disclosures
+    let mut disclosures: Vec<String> = disclosures
         .into_iter()
         .map(|disclosure| disclosure.to_string())
         .collect();
 
-    // TODO: disclosures の配列の中身をランダムに並べ替える
-    let sd_jwt: SdJwt = SdJwt::new(jwt.clone(), disclosures.clone(), None);
+    // 乱数生成器を取得
+    let mut rng = thread_rng();
+    // ベクタの中身をランダムに入れ替える
+    disclosures.shuffle(&mut rng);
+
+    // disclosures の配列の中身をランダムに並べ替える
+    let sd_jwt: SdJwt = SdJwt::new(jwt, disclosures, None);
     let sd_jwt: String = sd_jwt.presentation();
     println!("VC={}", sd_jwt);
 

@@ -57,6 +57,12 @@ source = "registry+https://github.com/rust-lang/crates.io-index"
 checksum = "9d297deb1925b89f2ccc13d7635fa0714f12c87adce1c75356b39ca9b7178567"
 
 [[package]]
+name = "base64"
+version = "0.22.0"
+source = "registry+https://github.com/rust-lang/crates.io-index"
+checksum = "9475866fec1451be56a3c2400fd081ff546538961565ccb5b7142cbd22bc7a51"
+
+[[package]]
 name = "bitflags"
 version = "2.5.0"
 source = "registry+https://github.com/rust-lang/crates.io-index"
@@ -309,6 +315,7 @@ checksum = "7f24254aa9a54b5c858eaee2f5bccdb46aaf0e486a595ed5fd8f86ba55232a70"
 name = "holder"
 version = "0.1.0"
 dependencies = [
+ "base64 0.22.0",
  "josekit",
  "sd-jwt-payload",
  "serde_json",
@@ -398,7 +405,7 @@ source = "registry+https://github.com/rust-lang/crates.io-index"
 checksum = "0953340cf63354cec4a385f1fbcb3f409a5823778cae236078892f6030ed4565"
 dependencies = [
  "anyhow",
- "base64",
+ "base64 0.21.7",
  "flate2",
  "once_cell",
  "openssl",
@@ -687,7 +694,7 @@ version = "3.7.0"
 source = "registry+https://github.com/rust-lang/crates.io-index"
 checksum = "ee80b0e361bbf88fd2f6e242ccd19cfda072cb0faa6ae694ecee08199938569a"
 dependencies = [
- "base64",
+ "base64 0.21.7",
  "chrono",
  "hex",
  "indexmap 1.9.3",
