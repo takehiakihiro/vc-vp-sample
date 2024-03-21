@@ -79,6 +79,8 @@ fn main() -> Result<(), Box<dyn Error>> {
     payload.set_audience([key_binding_jwt.aud.clone()].to_vec());
     let now = std::time::SystemTime::now();
     payload.set_issued_at(&now);
+    let expires_at = now + std::time::Duration::from_secs(60 * 60);
+    payload.set_expires_at(&expires_at);
     payload.set_claim("nonce", Some(Value::String(key_binding_jwt.nonce)))?;
     payload.set_claim("sd_hash", Some(Value::String(key_binding_jwt.sd_hash)))?;
     let key_binding_jwt = jwt::encode_with_signer(&payload, &header, &signer)?;
