@@ -1,6 +1,6 @@
 use josekit::{
     jwk::{Jwk, JwkSet},
-    jws::{JwsHeader, JwsSigner, EdDSA},
+    jws::{EdDSA, JwsHeader, JwsSigner},
 };
 use serde_json::{json, Value};
 

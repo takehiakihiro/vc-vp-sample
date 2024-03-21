@@ -1,5 +1,5 @@
+use anyhow::{anyhow, Result};
 use jsonwebtoken::{decode, Algorithm, DecodingKey, Validation};
-use anyhow::{Result, anyhow};
 use std::fs;
 
 fn main() -> Result<()> {

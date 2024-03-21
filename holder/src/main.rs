@@ -1,8 +1,8 @@
+use anyhow::{anyhow, Result};
+use chrono::{TimeDelta, Utc};
 use jsonwebtoken::{encode, Algorithm, EncodingKey, Header};
-use anyhow::{Result, anyhow};
-use std::fs;
 use serde_json;
-use chrono::{Utc, TimeDelta};
+use std::fs;
 
 fn main() -> Result<()> {
     // 秘密鍵をファイルから読み込み
@@ -13,9 +13,7 @@ fn main() -> Result<()> {
     // 現在時刻
     let now = Utc::now();
     let exp = match TimeDelta::try_days(1) {
-        Some(one_day) => {
-            (now + one_day).timestamp()
-        }
+        Some(one_day) => (now + one_day).timestamp(),
         None => {
             println!("Error occurred");
             now.timestamp() + 10
