@@ -69,6 +69,8 @@ fn main() -> Result<(), Box<dyn Error>> {
 
     // Use the encoded object as a payload for the JWT.
     let mut payload = JwtPayload::from_map(encoder.object()?.clone())?;
+    payload.set_issuer("emotionlink-issuer");
+    let _ = payload.set_claim("vct", Some(Value::from("emotionlink")));
     let audience: String = format!("{}_{}", group_name, account_name);
     let audiences = vec![audience];
     payload.set_audience(audiences);
