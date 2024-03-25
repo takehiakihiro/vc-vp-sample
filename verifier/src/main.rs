@@ -8,7 +8,7 @@ fn main() -> Result<(), Box<dyn Error>> {
     const ISSUER_PUBLIC_KEY: &str = "../issuer/issuer_public_key_ed25519.pem";
 
     // Holderから提出されたVP（署名付きJWTとして）
-    let sd_jwt = "eyJ0eXAiOiJlbW90aW9ubGluaytzZC1qd3QiLCJhbGciOiJFZERTQSJ9.eyJjbmYiOnsia3R5IjoiT0tQIiwidXNlIjoic2lnIiwiY3J2IjoiRWQyNTUxOSIsIngiOiJ1cVlhOTVaN0tIVGRabWdIUTZDRFF3LTNndzBEbEZTTVVvaTNzX0FRaDBNIn0sIl9zZCI6WyJNbjYxcFlyNlk1RExSbm85NnpOMzdCUGM2UHRjYUpFMGdpWXUwRzFwYWZjIiwidGd5b1M2UFc1cGZBSm4xaG15WG9FSzg1U19meTVLc1BYbmxIa1NEWTlCUSIsIktON2JRdGpCamxEZndBVy1TTERPaTE3SW9fMUUtcjk0elk0eHp1T3BKVnciLCJlaFBvdl9nc1oxWXhTT1hGUXBaZGRjOEpKWDFuVXZHSDRlMzB2aFZKVTM0IiwidHBNaEtJZE5ieDRrOU1qanV4dERIdEdxblQzOE1TTjR1aWkzTU42eDJZcyIsIk5tUFZfaFVJOHVmWWFfMEwwZ0M2MFdKT3dJTWpmOXQ3QzRTaE9VdF95WE0iLCJzejBpZ3pjZmExSEVzUUE3ZEtVaWwySl95Qk5CWVBJNTl0SXNHWnl5WkwwIiwiMWVhNnczWFVjYmJPN2k3NjAzTjk3QW9vUlRueklJLXNVamFCZGlNRFYwbyIsIjhkWXpDenFzaWFQQkZ2TDhGc1JONVJtWlRWb0hFYnNtb2M5YW1hajlpc2MiXSwiaXNzIjoiZW1vdGlvbmxpbmstaXNzdWVyIiwidmN0IjoiZW1vdGlvbmxpbmsiLCJhdWQiOiJleGFtcGxlX2dyb3VwX2V4YW1wbGVfYWNjb3VudCIsImlhdCI6MTcxMTMzNzcwOSwiZXhwIjoxNzExOTQyNTA5fQ.5OEZoRUx_DXm9sB5k1hXC8F4ghp5spQBdYHq7HIPB9EdsH9gQM3_eTsllbA5c-Sqwp9rZK9T-keEreVtcfIpCg~WyJzSHdTenBobGRVSi1HZHU1NHZvRkNxeTd3N1UtdUpEd2dkRVRNNTJMIiwgImRuc19hZGRyZXNzZXMiLCBbIjEwLjI1NC4xMC4xIiwiZmMwMDpmZjAwOjA6YTo6MTA6MSJdXQ~WyJ4YXZkb3FhN3M5a1hxaGI1Z1pwQzJVb3VsaTR2a3ppZ1BJb0ttQVhzIiwgInJvdXRlX25ldHdvcmtzIiwgWyIxMC4yNTQuMC4wLzE2IiwiZmMwMDpmZjAwOjA6YTo6LzY0Il1d~WyJMaGk3cXlRRjNncnp3M3NvZjR6czZyN2otNmR6NFR1Y0t1RWc0U19BIiwgImFjY291bnRfbmFtZSIsICJleGFtcGxlX2FjY291bnQiXQ~WyJ0eWdEUFJPOTZaelNoXzF1Rjg3U2lwdFpoZXFTX3owZXc0Vk5LdGhxIiwgImdyb3VwX25hbWUiLCAiZXhhbXBsZV9ncm91cCJd~WyJPeFlSLWtLRG1aaVFBQmNueUtQUkwzUEU4bDFiUkNFQ2VkdUl0ZzF4IiwgImlwX2FkZHJlc3NlcyIsIFsiMTAuMjU0LjEwMC4yIiwiZmMwMDpmZjAwOjA6YTo6MTAwOjIiXV0~eyJhbGciOiJFZERTQSIsInR5cCI6ImtiK2p3dCJ9.eyJhdWQiOiJlbC1zZXJ2ZXIiLCJpYXQiOjE3MTEzMzc3NDAsImV4cCI6MTcxMTM0MTM0MCwibm9uY2UiOiJub25jZSIsInNkX2hhc2giOiJzQ3hPZXBxcFlvXzlKS3hqcXVweVRDbHRsRWUxX3o2SnItV3V0YU5CVU1rIn0.d8Gzhnl5Y0RF7gIqU6cyWn70XQbhO4npFfgdpwUK1sJz2Du-inC2MaypVufzhL30j28D1L-1yLWRSpejrLXYCg";
+    let sd_jwt = "eyJ0eXAiOiJ2YytzZC1qd3QiLCJhbGciOiJFZERTQSJ9.eyJjbmYiOnsiandrIjp7Imt0eSI6Ik9LUCIsInVzZSI6InNpZyIsImNydiI6IkVkMjU1MTkiLCJ4IjoidXFZYTk1WjdLSFRkWm1nSFE2Q0RRdy0zZ3cwRGxGU01Vb2kzc19BUWgwTSJ9fSwiX3NkIjpbIndlZ1prbEIzR1hEd1FyVC1ObmRtMGVkYVBxN0FtaHpUbVRHQ0dISmFBVTgiLCI4Y0ZRTzlaMXVSRnBQNDNFLXUyVkFXRVNpODFQbVB2empDYWxDLVNlODBjIiwiUDctRktvQ2ZSUzBmaWtidjM2QTB3NDhXcDdZRzcyLTBWNm5Wa2Y4Y1puYyIsIjJMSkpEeVU5c0wzbE1wRUtTRW9DZ25HMV9ET01BaUNYLWNRVFBTbFQydmMiLCJLNGFobFAyRXVaUGhIdFZiLXRrQ2FiZVBKVHJFaEZqZ2RuXzIwNGVraVlrIiwiaVhmRVpaU01xdC1RbkluWU5zc1ZpU18yUG1MSWI4elhBUkFQOWN6NzRMbyIsIjhOTFVacEJaVFZXcW01YjRqN0M5Z1RNbkEwMzNjSDh1dmtpWHRYWG1JRTQiLCJLQU9UWUtLT1VRWkRYbXdWVXZjVktJN0pMUWdBbXNHOWhQM19MVl96azM4IiwiS1Y2MTJFNUNLSmdNWHVoQXRzQTBZcDVDWEdKQ3RQdWU0Yi1leFFPcEFxQSJdLCJpc3MiOiJlbW90aW9ubGluay1pc3N1ZXIiLCJ2Y3QiOiJlbW90aW9ubGluayIsImF1ZCI6ImV4YW1wbGVfZ3JvdXBfZXhhbXBsZV9hY2NvdW50IiwiaWF0IjoxNzExMzUxOTUyLCJleHAiOjE3MTE5NTY3NTJ9.5sjdqdMcgpW0GX1oHYbeaffw6dWfzWjRk-BM1Q4EmDmTXcWX15lwEpl8AjsSWeBq3aAq6IvuEOsJm4SwN7Z4AQ~WyJyU2tjV2JwSmxFOE1fWlFJXy1DNzBQREhOY096SGdIRkw5MUJqd3NOIiwgImlwX2FkZHJlc3NlcyIsIFsiMTAuMjU0LjEwMC4yIiwiZmMwMDpmZjAwOjA6YTo6MTAwOjIiXV0~WyIwRDJ4VDBiTXNjNVpaRTlnNm4wQ0RfdzRPSGxvWVJuSC1UVWsxcFRPIiwgImRuc19hZGRyZXNzZXMiLCBbIjEwLjI1NC4xMC4xIiwiZmMwMDpmZjAwOjA6YTo6MTA6MSJdXQ~WyJWSFFKYXN1MElaSVViRWt3Q015clJlWGtieGpKV0NNWHRRUF9PSUZBIiwgImFjY291bnRfbmFtZSIsICJleGFtcGxlX2FjY291bnQiXQ~WyJXZG13eHo4Y014RFZWSEszVC1pQzVQMzd6M2lpRzNsOFdvUkNybXhHIiwgImdyb3VwX25hbWUiLCAiZXhhbXBsZV9ncm91cCJd~WyJjaTk4T2xyeVpkMWpCeDlYQWNRYTJhOExrWTBkcU9tYVh2dV92V2xXIiwgInJvdXRlX25ldHdvcmtzIiwgWyIxMC4yNTQuMC4wLzE2IiwiZmMwMDpmZjAwOjA6YTo6LzY0Il1d~eyJhbGciOiJFZERTQSIsInR5cCI6ImtiK2p3dCJ9.eyJhdWQiOiJlbC1zZXJ2ZXIiLCJpYXQiOjE3MTEzNTIwNjksImV4cCI6MTcxMTM1NTY2OSwibm9uY2UiOiJub25jZSIsInNkX2hhc2giOiJhMEJQSGtfOUdaNE55WnA2OFVZZWtRRUpOdUxaQ2RvVkF3cDFmZlEwd2lJIn0.RvfdrOSdGHA5JwvKYoOw_eObJ_Mm8cDVdYCKECe1wNpOss8MaIaAjUSjlS9q0Ae7ajR1nAMexLvHPr9X1MO0Bg";
 
     // Decoding the SD-JWT
     // Extract the payload from the JWT of the SD-JWT after verifying the signature.
@@ -24,10 +24,10 @@ fn main() -> Result<(), Box<dyn Error>> {
     println!("sd-jwt's header={:?}", sd_jwt_header.to_string());
     println!("sd-jwt's payload={:?}", sd_jwt_payload.to_string());
 
-    // sd-jwt の header の typ が emotionlink+sd-jwt であるかチェック
+    // sd-jwt の header の typ が vc+sd-jwt であるかチェック
     match sd_jwt_header.token_type() {
-        Some("emotionlink+sd-jwt") => (),
-        Some(_) => panic!("token type is not emotionlink+sd-jwt!"),
+        Some("vc+sd-jwt") => (),
+        Some(_) => panic!("token type is not vc+sd-jwt!"),
         _ => panic!("token type is None!"),
     }
 
@@ -43,7 +43,11 @@ fn main() -> Result<(), Box<dyn Error>> {
 
     let holder_public_key_jwk = match sd_jwt_payload.claim("cnf") {
         Some(value) => {
-            let key_materials = if let Some(data) = value.as_object() {
+            let jwk = match value.get(&"jwk") {
+                Some(v) => v,
+                _ => panic!("there is no jwk"),
+            };
+            let key_materials = if let Some(data) = jwk.as_object() {
                 data
             } else {
                 panic!("failed to as_object!");

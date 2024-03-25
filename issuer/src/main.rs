@@ -36,8 +36,14 @@ fn main() -> Result<(), Box<dyn Error>> {
       "company": company,
     });
 
+    let mut inner_jwk = serde_json::Map::new();
+    inner_jwk.insert("jwk".to_string(), pubkey_jwk);
+    let cnf = match serde_json::to_value(inner_jwk) {
+        Ok(v) => v,
+        _ => panic!("failed to add"),
+    };
     if let Value::Object(ref mut map) = object {
-        map.insert("cnf".to_string(), pubkey_jwk);
+        map.insert("cnf".to_string(), cnf);
     }
 
     let mut encoder: SdObjectEncoder = object.try_into()?;
@@ -63,7 +69,7 @@ fn main() -> Result<(), Box<dyn Error>> {
     // Create the JWT.
     // Creating JWTs is outside the scope of this library, josekit is used here as an example.
     let mut header = JwsHeader::new();
-    let token_type = format!("emotionlink+{}", HEADER_TYP);
+    let token_type = format!("vc+{}", HEADER_TYP);
     header.set_token_type(token_type);
     header.set_algorithm("EdDSA"); // EdDSA署名アルゴリズムの指定
 
