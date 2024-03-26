@@ -105,6 +105,7 @@ fn main() -> Result<(), Box<dyn Error>> {
     let sd_jwt: SdJwt = SdJwt::new(jwt, disclosures, None);
     let sd_jwt: String = sd_jwt.presentation();
     println!("VC={}", sd_jwt);
+    std::fs::write("vc.jwt".to_string(), sd_jwt)?;
 
     Ok(())
 }

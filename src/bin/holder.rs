@@ -7,12 +7,12 @@ use std::error::Error;
 
 fn main() -> Result<(), Box<dyn Error>> {
     // 秘密鍵をファイルから読み込み
-    const ISSUER_PUBLIC_KEY: &str = "../issuer/issuer_public_key_ed25519.pem";
-    const HOLDER_PRIVATE_KEY: &str = "../issuer/holder_private_key_ed25519.pem";
+    const ISSUER_PUBLIC_KEY: &str = "issuer_public_key_ed25519.pem";
+    const HOLDER_PRIVATE_KEY: &str = "holder_private_key_ed25519.pem";
 
-    const VC: &str = "eyJ0eXAiOiJ2YytzZC1qd3QiLCJhbGciOiJFZERTQSJ9.eyJjbmYiOnsiandrIjp7Imt0eSI6Ik9LUCIsInVzZSI6InNpZyIsImNydiI6IkVkMjU1MTkiLCJ4IjoidXFZYTk1WjdLSFRkWm1nSFE2Q0RRdy0zZ3cwRGxGU01Vb2kzc19BUWgwTSJ9fSwiX3NkIjpbIndlZ1prbEIzR1hEd1FyVC1ObmRtMGVkYVBxN0FtaHpUbVRHQ0dISmFBVTgiLCI4Y0ZRTzlaMXVSRnBQNDNFLXUyVkFXRVNpODFQbVB2empDYWxDLVNlODBjIiwiUDctRktvQ2ZSUzBmaWtidjM2QTB3NDhXcDdZRzcyLTBWNm5Wa2Y4Y1puYyIsIjJMSkpEeVU5c0wzbE1wRUtTRW9DZ25HMV9ET01BaUNYLWNRVFBTbFQydmMiLCJLNGFobFAyRXVaUGhIdFZiLXRrQ2FiZVBKVHJFaEZqZ2RuXzIwNGVraVlrIiwiaVhmRVpaU01xdC1RbkluWU5zc1ZpU18yUG1MSWI4elhBUkFQOWN6NzRMbyIsIjhOTFVacEJaVFZXcW01YjRqN0M5Z1RNbkEwMzNjSDh1dmtpWHRYWG1JRTQiLCJLQU9UWUtLT1VRWkRYbXdWVXZjVktJN0pMUWdBbXNHOWhQM19MVl96azM4IiwiS1Y2MTJFNUNLSmdNWHVoQXRzQTBZcDVDWEdKQ3RQdWU0Yi1leFFPcEFxQSJdLCJpc3MiOiJlbW90aW9ubGluay1pc3N1ZXIiLCJ2Y3QiOiJlbW90aW9ubGluayIsImF1ZCI6ImV4YW1wbGVfZ3JvdXBfZXhhbXBsZV9hY2NvdW50IiwiaWF0IjoxNzExMzUxOTUyLCJleHAiOjE3MTE5NTY3NTJ9.5sjdqdMcgpW0GX1oHYbeaffw6dWfzWjRk-BM1Q4EmDmTXcWX15lwEpl8AjsSWeBq3aAq6IvuEOsJm4SwN7Z4AQ~WyJyU2tjV2JwSmxFOE1fWlFJXy1DNzBQREhOY096SGdIRkw5MUJqd3NOIiwgImlwX2FkZHJlc3NlcyIsIFsiMTAuMjU0LjEwMC4yIiwiZmMwMDpmZjAwOjA6YTo6MTAwOjIiXV0~WyI1dFljM0FkRkNFd19ZTm0zeU9lby1kYi1sS0JWVkVCZVpic3pWNFFPIiwgInJlYWxfbmFtZSIsICJ0YWtlaGlha2loaXJvIl0~WyIwRDJ4VDBiTXNjNVpaRTlnNm4wQ0RfdzRPSGxvWVJuSC1UVWsxcFRPIiwgImRuc19hZGRyZXNzZXMiLCBbIjEwLjI1NC4xMC4xIiwiZmMwMDpmZjAwOjA6YTo6MTA6MSJdXQ~WyJWSFFKYXN1MElaSVViRWt3Q015clJlWGtieGpKV0NNWHRRUF9PSUZBIiwgImFjY291bnRfbmFtZSIsICJleGFtcGxlX2FjY291bnQiXQ~WyJXZG13eHo4Y014RFZWSEszVC1pQzVQMzd6M2lpRzNsOFdvUkNybXhHIiwgImdyb3VwX25hbWUiLCAiZXhhbXBsZV9ncm91cCJd~WyJjaTk4T2xyeVpkMWpCeDlYQWNRYTJhOExrWTBkcU9tYVh2dV92V2xXIiwgInJvdXRlX25ldHdvcmtzIiwgWyIxMC4yNTQuMC4wLzE2IiwiZmMwMDpmZjAwOjA6YTo6LzY0Il1d~WyJtc1oxaEd5MzlmRVlyVnQwUS1jLXg2TnJCTFNnLVRLR29LOVRhV21MIiwgImNvbXBhbnkiLCAiZnJlZWJpdCJd~";
+    let vc = std::fs::read_to_string("vc.jwt").unwrap();
 
-    let sd_jwt: SdJwt = SdJwt::parse(&VC)?;
+    let sd_jwt: SdJwt = SdJwt::parse(&vc)?;
 
     let public_key = std::fs::read(ISSUER_PUBLIC_KEY).unwrap();
     let issuer_verifier = EdDSA.verifier_from_pem(public_key)?;
@@ -91,6 +91,7 @@ fn main() -> Result<(), Box<dyn Error>> {
     let sd_jwt: String = sd_jwt.presentation();
 
     println!("VP={:?}", sd_jwt);
+    std::fs::write("vp.jwt".to_string(), sd_jwt)?;
 
     Ok(())
 }
