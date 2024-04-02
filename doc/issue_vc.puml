@@ -1,0 +1,19 @@
+@startuml
+holder -> issuer : VCを発行して
+note left: リクエストに公開鍵と\n認証のための情報を含める
+note right: holderの公開鍵
+issuer -> issuer : 認証
+issuer -> issuer : VCを発行
+note right: VCの中にholderの公開鍵を含める
+holder <- issuer : VC
+rnote over holder
+VC:
+- issuerの識別子
+- 発行日時
+- 有効期限
+- holderの公開鍵(JWK形式)
+- 資格情報のメタデータ
+ ...
+- issuerの署名
+endrnote
+@enduml

@@ -1,0 +1,9 @@
+@startuml
+holder -> holder : VPを生成
+note left: VCのコア部分＋開示データをVPに含め\nholderの秘密鍵で署名
+holder -> verifier : こんな資格を持っています(VP)
+verifier -> verifier : VPに含まれるVCの署名を\nissuerの識別子によって判明した\n公開鍵で検証
+verifier -> verifier : VCの中に含まれている\nholderの公開鍵を使ってVPの署名を検証
+holder <- verifier : 資格の検証結果
+holder <-> verifier : 検証が完了したのでサービスを受ける
+@enduml

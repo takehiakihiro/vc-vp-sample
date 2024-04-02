@@ -4,8 +4,8 @@
 
 近い将来までは、IDまわりはフェーズを刻むと考えられている。
 
-[参考1](https://tech.gmogshd.com/self-sovereign-identity-ssi/)
-[参考2](https://speakerdeck.com/gakumura/ssi-did-vc-101?slide=17)
+- [参考1](https://tech.gmogshd.com/self-sovereign-identity-ssi/)
+- [参考2](https://speakerdeck.com/gakumura/ssi-did-vc-101?slide=17)
 
 ### 少し前の状態：中央主権型（Centralized） Identity
 
@@ -74,27 +74,7 @@
 
 ### VC発行時の流れ
 
-```plantuml
-@startuml
-holder -> issuer : VCを発行して
-note left: リクエストに公開鍵と\n認証のための情報を含める
-note right: holderの公開鍵
-issuer -> issuer : 認証
-issuer -> issuer : VCを発行
-note right: VCの中にholderの公開鍵を含める
-holder <- issuer : VC
-rnote over holder
-VC:
-- issuerの識別子
-- 発行日時
-- 有効期限
-- holderの公開鍵(JWK形式)
-- 資格情報のメタデータ
- ...
-- issuerの署名
-endrnote
-@enduml
-```
+![Class Diagram](http://www.plantuml.com/plantuml/proxy?src=https://raw.githubusercontent.com/takehiakihiro/vc-vp-sample/main/doc/issue_vc.puml)
 
 - 認証はVC発行リクエストの中に含まれるRAR仕様（RFC 9396）のデータによって行われる。パラメータ名はauthorization_details。
 - 基本的にはholderが持つVCから生成したVPを受け渡すことで別のVC発行の許可を得る。
@@ -103,17 +83,7 @@ endrnote
 
 ### VerifierがHolderの資格を検証する時の流れ
 
-```plantuml
-@startuml
-holder -> holder : VPを生成
-note left: VCのコア部分＋開示データをVPに含め\nholderの秘密鍵で署名
-holder -> verifier : こんな資格を持っています(VP)
-verifier -> verifier : VPに含まれるVCの署名を\nissuerの識別子によって判明した\n公開鍵で検証
-verifier -> verifier : VCの中に含まれている\nholderの公開鍵を使ってVPの署名を検証
-holder <- verifier : 資格の検証結果
-holder <-> verifier : 検証が完了したのでサービスを受ける
-@enduml
-```
+![Class Diagram](http://www.plantuml.com/plantuml/proxy?src=https://raw.githubusercontent.com/takehiakihiro/vc-vp-sample/main/doc/verify_vp.puml)
 
 - VCの中にholderの公開鍵が含まれていることで、VCの発行を受けた人がholderであることも同時に確認できるうえに公開鍵を探しに行く必要がない。
 
@@ -138,27 +108,4 @@ VC周りを調べると必ず出てくる画像。
 
 ### マイナンバーのVC発行やVPの提示でうまくいくわけ
 
-```plantuml
-@startuml
-VC管理アプリ -> VC管理アプリ : マイナンバーカードを使って\nデータを署名する
-VC管理アプリ -> マイナンバーAPI : マイナンバーカードの情報が\n書いてあるVCの発行を依頼
-note left: リクエストにはマイナンバーカードの\n秘密鍵で署名されたデータ
-マイナンバーAPI -> マイナンバーAPI : 保存してある利用者の\n公開鍵で署名を検証
-マイナンバーAPI -> マイナンバーAPI : マイナンバーカードの\n情報をVC化して署名
-マイナンバーAPI -> VC管理アプリ : マイナンバー情報VC発行
-note left: マイナンバー情報VC
-VC管理アプリ -> VC管理アプリ : マイナンバーVCからVPを生成
-VC管理アプリ -> 運転免許発行 : 運転免許発行依頼
-note right: マイナンバー情報VP
-運転免許発行 -> 運転免許発行 : 資格が存在するか確認
-運転免許発行 -> VC管理アプリ : 運転免許VC発行
-note left: 運転免許VC
-VC管理アプリ -> VC管理アプリ : 運転免許VCからVPを生成
-VC管理アプリ -> レンタカー屋 : 認証＋サービス利用依頼
-note right: 運転免許VP
-レンタカー屋 -> レンタカー屋 : VPを検証することで認証
-レンタカー屋 -> レンタカー屋 : 空きの車を確認
-レンタカー屋 -> VC管理アプリ : 認証OK、ある期間のレンタル資格VC発行
-note left: ある期間のレンタル資格VC
-@enduml
-```
+![Class Diagram](http://www.plantuml.com/plantuml/proxy?src=https://raw.githubusercontent.com/takehiakihiro/vc-vp-sample/main/doc/sample_issue_flow.puml)
