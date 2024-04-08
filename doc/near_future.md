@@ -1,6 +1,6 @@
 # 近い将来のアカウントやデータの在り方
 
-## インターネット上のあるサービスを利用したい場合
+## インターネット上のあるサービスを利用するには
 
 近い将来までは、IDまわりはフェーズを刻むと考えられている。
 
@@ -74,7 +74,7 @@
 
 ### VC発行時の流れ
 
-![Class Diagram](http://www.plantuml.com/plantuml/proxy?src=https://raw.githubusercontent.com/takehiakihiro/vc-vp-sample/main/doc/issue_vc.puml)
+![](https://www.plantuml.com/plantuml/proxy?src=https://raw.githubusercontent.com/takehiakihiro/vc-vp-sample/main/doc/issue_vc.puml)
 
 - 認証はVC発行リクエストの中に含まれるRAR仕様（RFC 9396）のデータによって行われる。パラメータ名はauthorization_details。
 - 基本的にはholderが持つVCから生成したVPを受け渡すことで別のVC発行の許可を得る。
@@ -83,7 +83,7 @@
 
 ### VerifierがHolderの資格を検証する時の流れ
 
-![Class Diagram](http://www.plantuml.com/plantuml/proxy?src=https://raw.githubusercontent.com/takehiakihiro/vc-vp-sample/main/doc/verify_vp.puml)
+![](https://www.plantuml.com/plantuml/proxy?src=https://raw.githubusercontent.com/takehiakihiro/vc-vp-sample/main/doc/verify_vp.puml)
 
 - VCの中にholderの公開鍵が含まれていることで、VCの発行を受けた人がholderであることも同時に確認できるうえに公開鍵を探しに行く必要がない。
 
@@ -108,4 +108,38 @@ VC周りを調べると必ず出てくる画像。
 
 ### マイナンバーのVC発行やVPの提示でうまくいくわけ
 
-![Class Diagram](http://www.plantuml.com/plantuml/proxy?src=https://raw.githubusercontent.com/takehiakihiro/vc-vp-sample/main/doc/sample_issue_flow.puml)
+![](https://www.plantuml.com/plantuml/proxy?src=https://raw.githubusercontent.com/takehiakihiro/vc-vp-sample/main/doc/sample_issue_flow.puml)
+
+## どこまでVCで持つべきか？
+
+### VC化が簡単に想定できるもの
+
+- 国籍
+  - 生まれた日
+  - 性別（これはいろいろ問題が出そうだけど、、、不要かも？）
+  - 本籍地
+- 住民票の情報
+- 資格情報
+  - 自動車運転免許
+  - 船舶運転免許
+  - などの資格
+- 履歴書に載せるような情報
+  - 学校に入学した日
+  - 学校から卒業した日（これがあることで卒業とみなす？）
+  - 学校を中退した日
+  - 犯罪歴
+
+### VC化をするべきか（どこをゴールとするかで変わる）
+
+- 現在のユーザの属性情報
+  - 興味を持っていること（自分が気が付いているいないにかかわらないプロファイル情報）
+  - 
+- 今は病院が持つことでバラバラになっている情報はVC化するべき？
+  → Walletと病院の両方で持つ
+  - 診察情報
+  - 検査結果
+  - 処方箋
+  - 入院履歴
+- SNSのメッセージの一つ一つ（VC化することで誰の発言なのかがはっきりする）
+  → WalletとSNSサービスプロバイダーの両方で持つ？
+
