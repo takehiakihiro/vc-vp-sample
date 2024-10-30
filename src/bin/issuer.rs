@@ -18,22 +18,12 @@ fn main() -> Result<(), Box<dyn Error>> {
     let pubkey_jwk = serde_json::from_str(&jwk.to_string())?;
 
     // ======================= Issuer part =======================
-    let account_name = "example_account";
-    let ip_addresses = ["10.254.100.2", "fc00:ff00:0:a::100:2"];
-    let dns_addresses = ["10.254.10.1", "fc00:ff00:0:a::10:1"];
-    let route_networks = ["10.254.0.0/16", "fc00:ff00:0:a::/64"];
-    let group_name = "example_group";
-    let real_name = "takehiakihiro";
-    let company = "freebit";
+    let id = "takehi";
+    let dummy = "dummy";
 
     let mut object = json!({
-      "account_name": account_name,
-      "ip_addresses": ip_addresses,
-      "dns_addresses": dns_addresses,
-      "route_networks": route_networks,
-      "group_name": group_name,
-      "real_name": real_name,
-      "company": company,
+      "id": id,
+      "dummy": dummy,
     });
 
     let mut inner_jwk = serde_json::Map::new();
@@ -48,13 +38,8 @@ fn main() -> Result<(), Box<dyn Error>> {
 
     let mut encoder: SdObjectEncoder = object.try_into()?;
     let disclosures: Vec<Disclosure> = vec![
-        encoder.conceal("/account_name", None)?,
-        encoder.conceal("/ip_addresses", None)?,
-        encoder.conceal("/dns_addresses", None)?,
-        encoder.conceal("/route_networks", None)?,
-        encoder.conceal("/group_name", None)?,
-        encoder.conceal("/real_name", None)?,
-        encoder.conceal("/company", None)?,
+        encoder.conceal("/id", None)?,
+        encoder.conceal("/dummy", None)?,
     ];
 
     encoder.add_decoys("", 2)?; // Add decoys to the top level.
@@ -76,9 +61,7 @@ fn main() -> Result<(), Box<dyn Error>> {
     // Use the encoded object as a payload for the JWT.
     let mut payload = JwtPayload::from_map(encoder.object()?.clone())?;
     payload.set_issuer("emotionlink-issuer");
-    let _ = payload.set_claim("vct", Some(Value::from("emotionlink")));
-    let audience: String = format!("{}_{}", group_name, account_name);
-    let audiences = vec![audience];
+    let audiences = vec![id];
     payload.set_audience(audiences);
     let now = std::time::SystemTime::now();
     let expires_at = now + std::time::Duration::from_secs(7 * 24 * 60 * 60);
