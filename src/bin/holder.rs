@@ -1,9 +1,18 @@
 use base64::{engine::general_purpose::URL_SAFE_NO_PAD, Engine as _};
-use josekit::jws::{EdDSA, JwsHeader};
-use josekit::jwt::{self, JwtPayload};
+use jsonwebtoken::{Algorithm, DecodingKey, EncodingKey, Header, Validation};
 use sd_jwt_payload::{KeyBindingJwtClaims, SdJwt, Sha256Hasher};
-use serde_json::Value;
-use std::error::Error;
+use serde::{Deserialize, Serialize};
+use serde_json::{json, Number, Value};
+use std::{error::Error, fs::File, io::Read};
+
+#[derive(Debug, Serialize, Deserialize)]
+struct Claims {
+    _sd: Vec<String>,
+    aud: String,
+    iss: String,
+    iat: i64,
+    exp: i64,
+}
 
 fn main() -> Result<(), Box<dyn Error>> {
     // 秘密鍵をファイルから読み込み
@@ -13,12 +22,17 @@ fn main() -> Result<(), Box<dyn Error>> {
     let vc = std::fs::read_to_string("vc.jwt").unwrap();
 
     let sd_jwt: SdJwt = SdJwt::parse(&vc)?;
+    println!("sd_jwt: {:?}", sd_jwt);
 
-    let public_key = std::fs::read(ISSUER_PUBLIC_KEY).unwrap();
-    let issuer_verifier = EdDSA.verifier_from_pem(public_key)?;
-    let (payload, header) = jwt::decode_with_verifier(&sd_jwt.jwt, &issuer_verifier)?;
-    println!("sd-jwt's header={:?}", header.to_string());
-    println!("sd-jwt's payload={:?}", payload.to_string());
+    let public_key = read_pem_file(ISSUER_PUBLIC_KEY)?;
+    println!("public_key: {:?}", public_key);
+    let encoding_key = DecodingKey::from_ed_pem(&public_key)?;
+    println!("encoding_key");
+    let mut validation = Validation::new(Algorithm::EdDSA);
+    validation.set_audience(&["el-client"]);
+    let token_data = jsonwebtoken::decode::<Claims>(&sd_jwt.jwt, &encoding_key, &validation)?;
+    println!("sd-jwt's header={:?}", token_data.header);
+    println!("sd-jwt's payload={:?}", token_data.claims);
     println!("");
 
     // disclosures の中から、公開したいものを Base64url decode して中身を見て選別する
@@ -26,13 +40,7 @@ fn main() -> Result<(), Box<dyn Error>> {
 
     for encoded_str in sd_jwt.disclosures {
         let mut buffer = Vec::<u8>::new();
-        let check_strings = [
-            "ip_addresses",
-            "dns_addresses",
-            "route_networks",
-            "account_name",
-            "group_name",
-        ];
+        let check_strings = ["id"];
 
         // Base64urlデコードを試みる
         if URL_SAFE_NO_PAD
@@ -70,20 +78,43 @@ fn main() -> Result<(), Box<dyn Error>> {
         0,
     );
 
-    let holder_private_key = std::fs::read(HOLDER_PRIVATE_KEY).unwrap();
-    let signer = EdDSA.signer_from_pem(holder_private_key)?;
-    let mut header = JwsHeader::new();
-    header.set_algorithm("EdDSA"); // EdDSA署名アルゴリズムの指定
-    header.set_token_type("kb+jwt");
-    let mut payload = JwtPayload::new();
-    payload.set_audience([key_binding_jwt.aud.clone()].to_vec());
+    let mut header = Header::new(Algorithm::EdDSA);
+    header.typ = Some("kb+jwt".to_string());
+
+    let binding = json!({});
+    let mut payload = binding.as_object().unwrap().clone();
+
+    payload.insert("nonce".to_string(), Value::String(key_binding_jwt.nonce));
+    payload.insert(
+        "sd_hash".to_string(),
+        Value::String(key_binding_jwt.sd_hash),
+    );
+    payload.insert(
+        String::from("aud"),
+        Value::String(key_binding_jwt.aud.clone()),
+    );
+
     let now = std::time::SystemTime::now();
-    payload.set_issued_at(&now);
-    let expires_at = now + std::time::Duration::from_secs(60 * 60);
-    payload.set_expires_at(&expires_at);
-    payload.set_claim("nonce", Some(Value::String(key_binding_jwt.nonce)))?;
-    payload.set_claim("sd_hash", Some(Value::String(key_binding_jwt.sd_hash)))?;
-    let key_binding_jwt = jwt::encode_with_signer(&payload, &header, &signer)?;
+    let val = Number::from(
+        now.duration_since(std::time::SystemTime::UNIX_EPOCH)
+            .unwrap()
+            .as_secs(),
+    );
+    payload.insert("iat".to_string(), Value::Number(val));
+
+    let expires_at = now + std::time::Duration::from_secs(60);
+    let val = Number::from(
+        expires_at
+            .duration_since(std::time::SystemTime::UNIX_EPOCH)
+            .unwrap()
+            .as_secs(),
+    );
+    payload.insert("exp".to_string(), Value::Number(val));
+
+    let holder_private_key = std::fs::read(HOLDER_PRIVATE_KEY).unwrap();
+    let encoding_key = EncodingKey::from_ed_pem(&holder_private_key)?;
+    println!("loaded signer's private key");
+    let key_binding_jwt = jsonwebtoken::encode(&header, &payload, &encoding_key)?;
     println!("kb-jwt: {:?}", key_binding_jwt);
     println!("");
 
@@ -94,4 +125,14 @@ fn main() -> Result<(), Box<dyn Error>> {
     std::fs::write("vp.jwt".to_string(), sd_jwt)?;
 
     Ok(())
+}
+
+///
+fn read_pem_file(file_path: &str) -> Result<Vec<u8>, Box<dyn std::error::Error>> {
+    let mut file = File::open(file_path)?;
+    let mut contents = vec![];
+    file.read_to_end(&mut contents)?;
+    // let pem = parse(contents)?;
+    // Ok(pem.contents().to_vec())
+    Ok(contents)
 }
