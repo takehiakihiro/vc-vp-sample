@@ -1,3 +1,4 @@
+use anyhow::{anyhow, Result};
 use base64::{engine::general_purpose, Engine};
 use jsonwebtoken::{
     jwk::{
@@ -14,19 +15,22 @@ use rand::{
 use ring::signature::{Ed25519KeyPair, KeyPair};
 use sd_jwt_payload::{Disclosure, SdJwt, SdObjectEncoder, HEADER_TYP};
 use serde_json::{json, Number, Value};
-use std::{error::Error, fs::File, io::Read};
+use std::{fs::File, io::Read};
 
-fn main() -> Result<(), Box<dyn Error>> {
+fn main() -> Result<()> {
     const ISSUER_PRIVATE_KEY: &str = "issuer_private_key_ed25519.pem";
     const HOLDER_PRIVATE_KEY: &str = "holder_private_key_ed25519.pem";
 
     // ======================= Holder part =======================
     // PEMファイルから秘密鍵を読み込み、公開鍵を取り出す
-    let priv_key = read_pem_file(HOLDER_PRIVATE_KEY)?;
+    let priv_key = read_pem_file(HOLDER_PRIVATE_KEY)
+        .map_err(|e| anyhow!("failed to read pem e={}", e.to_string()))?;
     println!("priv_key={:?}", priv_key);
-    let key_pair = generate_key_pair(&priv_key)?;
+    let key_pair = generate_key_pair(&priv_key)
+        .map_err(|e| anyhow!("failed to generate key pair e={}", e.to_string()))?;
     // 公開鍵をJWK形式に変換
-    let pubkey_jwk = public_key_to_jwk(&key_pair)?;
+    let pubkey_jwk = public_key_to_jwk(&key_pair)
+        .map_err(|e| anyhow!("failed to convert to jwk e={}", e.to_string()))?;
     println!("pubkey_jwk={:?}", pubkey_jwk);
 
     // ======================= Issuer part =======================

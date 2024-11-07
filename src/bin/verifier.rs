@@ -1,9 +1,10 @@
-use josekit::{jwk, jwt};
-use josekit::{jws::EdDSA, Value};
+use anyhow::{anyhow, Result};
+use jsonwebtoken::{jwk::Jwk, Algorithm, DecodingKey, Validation};
 use sd_jwt_payload::{KeyBindingJwtClaims, SdJwt, SdObjectDecoder, Sha256Hasher};
-use std::error::Error;
+use serde_json::Value;
+use std::{fs::File, io::Read};
 
-fn main() -> Result<(), Box<dyn Error>> {
+fn main() -> Result<()> {
     // Holderの公開鍵をファイルから読み込み
     const ISSUER_PUBLIC_KEY: &str = "issuer_public_key_ed25519.pem";
 
@@ -12,65 +13,64 @@ fn main() -> Result<(), Box<dyn Error>> {
 
     // Decoding the SD-JWT
     // Extract the payload from the JWT of the SD-JWT after verifying the signature.
-    let public_key = std::fs::read(ISSUER_PUBLIC_KEY).unwrap();
-    let issuer_verifier = EdDSA.verifier_from_pem(public_key)?;
-
-    let now = std::time::SystemTime::now();
+    let public_key = read_pem_file(ISSUER_PUBLIC_KEY)
+        .map_err(|e| anyhow!("failed to read pem e={}", e.to_string()))?;
+    println!("public_key: {:?}", public_key);
+    let issuer_decoding_key = DecodingKey::from_ed_pem(&public_key)?;
+    println!("issuer_decoding_key");
 
     let sd_jwt: SdJwt = SdJwt::parse(&vp)?;
 
     // Holder の公開鍵を SD-JWT の cnf から取り出す
-    let (sd_jwt_payload, sd_jwt_header) = jwt::decode_with_verifier(&sd_jwt.jwt, &issuer_verifier)?;
-    println!("sd-jwt's header={:?}", sd_jwt_header.to_string());
-    println!("sd-jwt's payload={:?}", sd_jwt_payload.to_string());
+    let mut validation = Validation::new(Algorithm::EdDSA);
+    validation.set_audience(&["el-client"]);
+    let vc_token = jsonwebtoken::decode::<Value>(&sd_jwt.jwt, &issuer_decoding_key, &validation)?;
+    println!("VC header={:?}", vc_token.header);
+    println!("VC payload={:?}", vc_token.claims);
 
-    // sd-jwt の header の typ が vc+sd-jwt であるかチェック
-    match sd_jwt_header.token_type() {
-        Some("vc+sd-jwt") => (),
-        Some(_) => panic!("token type is not vc+sd-jwt!"),
-        _ => panic!("token type is None!"),
+    // VC の header の typ が vc+sd-jwt であるかチェック
+    match vc_token.header.typ {
+        Some(v) => match v.as_str() {
+            "vc+sd-jwt" => {}
+            _ => panic!("vc header typ is not vc+sd-jwt!"),
+        },
+        _ => panic!("vc header typ is None!"),
     }
 
-    // VP の exp が期限切れになっていないかチェック
-    match sd_jwt_payload.expires_at() {
-        Some(exp) => {
-            if exp < now {
-                panic!("kb-jwt's exp is expired!")
-            }
-        }
-        _ => panic!("kb-jwt has no exp!"),
-    }
+    // VC の exp が期限切れになっていないかチェック
+    // decodeで期限切れチェックはすでに行っている
 
-    let holder_public_key_jwk = match sd_jwt_payload.claim("cnf") {
+    let holder_public_key_jwk = match vc_token.claims.get("cnf") {
         Some(value) => {
             let jwk = match value.get(&"jwk") {
                 Some(v) => v,
                 _ => panic!("there is no jwk"),
             };
-            let key_materials = if let Some(data) = jwk.as_object() {
-                data
-            } else {
-                panic!("failed to as_object!");
-            };
-            jwk::Jwk::from_map(key_materials.clone())?
+            json_to_jwk(jwk)?
         }
         _ => panic!("there is no holder's public key!"),
     };
-    let holder_verifier = EdDSA.verifier_from_jwk(&holder_public_key_jwk)?;
+    let holder_decoding_key = DecodingKey::from_jwk(&holder_public_key_jwk)?;
 
-    let (kb_jwt_payload, kb_jwt_header) = match sd_jwt.key_binding_jwt {
-        Some(key_binding_jwt) => jwt::decode_with_verifier(&key_binding_jwt, &holder_verifier)?,
+    let vp_token = match sd_jwt.key_binding_jwt {
+        Some(vp_jwt) => {
+            let mut validation = Validation::new(Algorithm::EdDSA);
+            validation.set_audience(&["el-server"]);
+            jsonwebtoken::decode::<Value>(&vp_jwt, &holder_decoding_key, &validation)?
+        }
         _ => panic!("key_binding_jwt is None"),
     };
-    println!("kb-jwt's header={:?}", kb_jwt_header.to_string());
-    println!("kb-jwt's payload={:?}", kb_jwt_payload.to_string());
+    println!("kb-jwt's header={:?}", vp_token.header);
+    println!("kb-jwt's payload={:?}", vp_token.claims);
     println!("");
 
-    // kb-jwt の header の typ が kb+jwt であるかチェック
-    match kb_jwt_header.token_type() {
-        Some("kb+jwt") => (),
-        Some(_) => panic!("token type is not kb+jwt!"),
-        _ => panic!("token type is None!"),
+    // VP の header の typ が kb+jwt であるかチェック
+    match vp_token.header.typ {
+        Some(v) => match v.as_str() {
+            "kb+jwt" => {}
+            _ => panic!("vc header typ is not vc+sd-jwt!"),
+        },
+        _ => panic!("vc header typ is None!"),
     }
 
     // kb-jwt の sd_hash の値が一致するかチェック
@@ -84,7 +84,7 @@ fn main() -> Result<(), Box<dyn Error>> {
         0,
     );
     println!("sd_hash={}", key_binding_jwt.sd_hash);
-    if let Some(Value::String(sd_hash)) = kb_jwt_payload.claim("sd_hash") {
+    if let Some(Value::String(sd_hash)) = vp_token.claims.get("sd_hash") {
         if &key_binding_jwt.sd_hash != sd_hash {
             panic!("sd_hash is not correct!");
         }
@@ -92,29 +92,33 @@ fn main() -> Result<(), Box<dyn Error>> {
         panic!("sd_hash is not correct!");
     }
 
-    // kb-jwt の aud に el-server が含まれているかチェック
-    match kb_jwt_payload.audience() {
-        Some(aud) if aud.contains(&"el-server") => (),
-        _ => panic!("audience is not contains el-server!"),
-    }
-
-    // VC の exp が期限切れになっていないかチェック
-    match kb_jwt_payload.expires_at() {
-        Some(exp) => {
-            if exp < now {
-                panic!("kb-jwt's exp is expired!")
-            }
-        }
-        _ => panic!("kb-jwt has no exp!"),
-    }
-
+    println!("vp_token payload={:?}", vp_token.claims);
     // Decode the payload by providing the disclosures that were parsed from the SD-JWT.
     let decoder = SdObjectDecoder::new_with_sha256();
-    let decoded = decoder.decode(sd_jwt_payload.claims_set(), &sd_jwt.disclosures)?;
+    let obj = vc_token.claims.as_object().unwrap();
+    println!("obj={:?}", obj);
+    println!("disclosures len={}", sd_jwt.disclosures.len());
+    let decoded = decoder.decode(obj, &sd_jwt.disclosures)?;
     println!(
         "decoded object: {}",
         serde_json::to_string_pretty(&decoded)?
     );
 
     Ok(())
+}
+
+///
+fn read_pem_file(file_path: &str) -> Result<Vec<u8>, Box<dyn std::error::Error>> {
+    let mut file = File::open(file_path)?;
+    let mut contents = vec![];
+    file.read_to_end(&mut contents)?;
+    // let pem = parse(contents)?;
+    // Ok(pem.contents().to_vec())
+    Ok(contents)
+}
+
+///
+fn json_to_jwk(jwk: &Value) -> Result<Jwk> {
+    Ok(serde_json::from_value(jwk.clone())
+        .map_err(|e| anyhow!("failed to convert jwk e={}.", e))?)
 }

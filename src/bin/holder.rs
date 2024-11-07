@@ -26,11 +26,11 @@ fn main() -> Result<(), Box<dyn Error>> {
 
     let public_key = read_pem_file(ISSUER_PUBLIC_KEY)?;
     println!("public_key: {:?}", public_key);
-    let encoding_key = DecodingKey::from_ed_pem(&public_key)?;
-    println!("encoding_key");
+    let decoding_key = DecodingKey::from_ed_pem(&public_key)?;
+    println!("decoding_key");
     let mut validation = Validation::new(Algorithm::EdDSA);
     validation.set_audience(&["el-client"]);
-    let token_data = jsonwebtoken::decode::<Claims>(&sd_jwt.jwt, &encoding_key, &validation)?;
+    let token_data = jsonwebtoken::decode::<Value>(&sd_jwt.jwt, &decoding_key, &validation)?;
     println!("sd-jwt's header={:?}", token_data.header);
     println!("sd-jwt's payload={:?}", token_data.claims);
     println!("");
