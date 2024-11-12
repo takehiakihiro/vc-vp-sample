@@ -79,7 +79,7 @@ fn main() -> Result<()> {
         "iss".to_string(),
         Value::String("emotionlink-issuer".to_string()),
     );
-    payload.insert(String::from("aud"), Value::String("el-client".to_string()));
+    payload.insert(String::from("aud"), Value::String("fujita-app".to_string()));
 
     let now = std::time::SystemTime::now();
     let val = Number::from(
