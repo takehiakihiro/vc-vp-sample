@@ -15,9 +15,17 @@ use rand::{
 use ring::signature::{Ed25519KeyPair, KeyPair};
 use sd_jwt_payload::{Disclosure, SdJwt, SdObjectEncoder, HEADER_TYP};
 use serde_json::{json, Number, Value};
-use std::{fs::File, io::Read};
+use std::{env, fs::File, io::Read};
 
 fn main() -> Result<()> {
+    let args: Vec<String> = env::args().collect();
+
+    // 第一引数が存在するか確認
+    let account_name = match args.get(1) {
+        Some(v) => v.to_string(),
+        None => "takehi".to_string(),
+    };
+
     const ISSUER_PRIVATE_KEY: &str = "issuer_private_key_ed25519.pem";
     const HOLDER_PRIVATE_KEY: &str = "holder_private_key_ed25519.pem";
 
@@ -34,7 +42,7 @@ fn main() -> Result<()> {
     println!("pubkey_jwk={:?}", pubkey_jwk);
 
     // ======================= Issuer part =======================
-    let id = "takehi";
+    let id = &account_name;
     let dummy = "dummy";
 
     let mut object = json!({
