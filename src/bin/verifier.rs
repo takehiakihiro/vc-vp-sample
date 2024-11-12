@@ -23,7 +23,7 @@ fn main() -> Result<()> {
 
     // Holder の公開鍵を SD-JWT の cnf から取り出す
     let mut validation = Validation::new(Algorithm::EdDSA);
-    validation.set_audience(&["el-client"]);
+    validation.set_audience(&["fujita-app"]);
     let vc_token = jsonwebtoken::decode::<Value>(&sd_jwt.jwt, &issuer_decoding_key, &validation)?;
     println!("VC header={:?}", vc_token.header);
     println!("VC payload={:?}", vc_token.claims);

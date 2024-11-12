@@ -29,7 +29,7 @@ fn main() -> Result<(), Box<dyn Error>> {
     let decoding_key = DecodingKey::from_ed_pem(&public_key)?;
     println!("decoding_key");
     let mut validation = Validation::new(Algorithm::EdDSA);
-    validation.set_audience(&["el-client"]);
+    validation.set_audience(&["fujita-app"]);
     let token_data = jsonwebtoken::decode::<Value>(&sd_jwt.jwt, &decoding_key, &validation)?;
     println!("sd-jwt's header={:?}", token_data.header);
     println!("sd-jwt's payload={:?}", token_data.claims);
