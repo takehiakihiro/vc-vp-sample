@@ -42,7 +42,7 @@ fn main() -> Result<()> {
 
     let holder_public_key_jwk = match vc_token.claims.get("cnf") {
         Some(value) => {
-            let jwk = match value.get(&"jwk") {
+            let jwk = match value.get("jwk") {
                 Some(v) => v,
                 _ => panic!("there is no jwk"),
             };
