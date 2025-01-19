@@ -1,21 +1,15 @@
 use anyhow::{anyhow, Result};
-use base64::{engine::general_purpose, Engine};
-use jsonwebtoken::{
-    jwk::{
-        AlgorithmParameters, CommonParameters, EllipticCurve, Jwk, OctetKeyPairParameters,
-        OctetKeyPairType, PublicKeyUse,
-    },
-    Algorithm, EncodingKey, Header,
-};
-use pem::parse;
+use base64::Engine;
+use jsonwebtoken::{Algorithm, EncodingKey, Header};
 use rand::{
     seq::SliceRandom, // SliceRandomトレイトをインポート
     thread_rng,       // 乱数生成器をインポート
 };
+#[cfg(feature = "EdDSA")]
 use ring::signature::{Ed25519KeyPair, KeyPair};
 use sd_jwt_payload::{Disclosure, SdJwt, SdObjectEncoder, HEADER_TYP};
 use serde_json::{json, Number, Value};
-use std::{env, fs::File, io::Read};
+use std::env;
 
 fn main() -> Result<()> {
     let args: Vec<String> = env::args().collect();
@@ -26,20 +20,20 @@ fn main() -> Result<()> {
         None => "takehi".to_string(),
     };
 
+    #[cfg(feature = "EdDSA")]
     const ISSUER_PRIVATE_KEY: &str = "issuer_private_key_ed25519.pem";
-    const HOLDER_PRIVATE_KEY: &str = "holder_private_key_ed25519.pem";
+    #[cfg(feature = "ES256")]
+    const ISSUER_PRIVATE_KEY: &str = "issuer_private_key_ES256_pkcs8.pem";
+    #[cfg(feature = "EdDSA")]
+    const HOLDER_KEY: &str = "holder_private_key_ed25519.pem";
+    #[cfg(feature = "ES256")]
+    const HOLDER_KEY: &str = "holder_public_key_ES256.pem";
 
     // ======================= Holder part =======================
     // PEMファイルから秘密鍵を読み込み、公開鍵を取り出す
-    let priv_key = read_pem_file(HOLDER_PRIVATE_KEY)
-        .map_err(|e| anyhow!("failed to read pem e={}", e.to_string()))?;
-    println!("priv_key={:?}", priv_key);
-    let key_pair = generate_key_pair(&priv_key)
-        .map_err(|e| anyhow!("failed to generate key pair e={}", e.to_string()))?;
-    // 公開鍵をJWK形式に変換
-    let pubkey_jwk = public_key_to_jwk(&key_pair)
+    let pubkey_jwk = public_key_to_jwk(HOLDER_KEY)
         .map_err(|e| anyhow!("failed to convert to jwk e={}", e.to_string()))?;
-    println!("pubkey_jwk={:?}", pubkey_jwk);
+    println!("pubkey_jwk={}", pubkey_jwk);
 
     // ======================= Issuer part =======================
     let id = &account_name;
@@ -77,7 +71,10 @@ fn main() -> Result<()> {
 
     // Create the JWT.
     // Creating JWTs is outside the scope of this library, josekit is used here as an example.
+    #[cfg(feature = "EdDSA")]
     let mut header = Header::new(Algorithm::EdDSA);
+    #[cfg(feature = "ES256")]
+    let mut header = Header::new(Algorithm::ES256);
     let token_type = format!("vc+{}", HEADER_TYP);
     header.typ = Some(token_type);
 
@@ -107,7 +104,10 @@ fn main() -> Result<()> {
     payload.insert("exp".to_string(), Value::Number(val));
 
     let private_key = std::fs::read(ISSUER_PRIVATE_KEY).unwrap();
+    #[cfg(feature = "EdDSA")]
     let encoding_key = EncodingKey::from_ed_pem(&private_key)?;
+    #[cfg(feature = "ES256")]
+    let encoding_key = EncodingKey::from_ec_pem(&private_key)?;
     println!("loaded signer's private key");
     let jwt = jsonwebtoken::encode(&header, &payload, &encoding_key)?;
 
@@ -126,32 +126,40 @@ fn main() -> Result<()> {
     let sd_jwt: SdJwt = SdJwt::new(jwt, disclosures, None);
     let sd_jwt: String = sd_jwt.presentation();
     println!("VC={}", sd_jwt);
-    std::fs::write("vc.jwt".to_string(), sd_jwt)?;
+    std::fs::write("vc.jwt", sd_jwt)?;
 
     Ok(())
 }
 
-///
-fn read_pem_file(file_path: &str) -> Result<Vec<u8>, Box<dyn std::error::Error>> {
-    let mut file = File::open(file_path)?;
-    let mut contents = String::new();
-    file.read_to_string(&mut contents)?;
-    let pem = parse(contents)?;
+/// PEMファイルから鍵を取り出す
+#[cfg(feature = "EdDSA")]
+fn read_pem_file(file_path: &str) -> Result<Vec<u8>> {
+    use pem::parse;
+    let pem = parse(std::fs::read(file_path)?)?;
     Ok(pem.contents().to_vec())
 }
 
-///
-fn generate_key_pair(
-    secret_key_bytes: &[u8],
-) -> Result<Ed25519KeyPair, Box<dyn std::error::Error>> {
-    let key_pair = Ed25519KeyPair::from_pkcs8_maybe_unchecked(secret_key_bytes)?;
+/// キーペアを生成
+#[cfg(feature = "EdDSA")]
+fn generate_key_pair(file_path: &str) -> Result<Ed25519KeyPair> {
+    let secret_key_bytes = read_pem_file(file_path)?;
+    let key_pair = Ed25519KeyPair::from_pkcs8_maybe_unchecked(&secret_key_bytes)?;
     Ok(key_pair)
 }
 
-///
-fn public_key_to_jwk(key_pair: &Ed25519KeyPair) -> Result<Value, Box<dyn std::error::Error>> {
+/// 公開鍵をJWK形式に変換する
+#[cfg(feature = "EdDSA")]
+fn public_key_to_jwk(file_path: &str) -> Result<Value, Box<dyn std::error::Error>> {
+    use base64::engine::general_purpose::URL_SAFE_NO_PAD;
+    use jsonwebtoken::jwk::{
+        AlgorithmParameters, CommonParameters, EllipticCurve, Jwk, OctetKeyPairParameters,
+        OctetKeyPairType, PublicKeyUse,
+    };
+
+    let key_pair = generate_key_pair(file_path)?;
+
     let public_key_bytes = key_pair.public_key().as_ref();
-    let x = general_purpose::URL_SAFE_NO_PAD.encode(public_key_bytes);
+    let x = URL_SAFE_NO_PAD.encode(public_key_bytes);
 
     let common = CommonParameters {
         public_key_use: Some(PublicKeyUse::Signature),
@@ -175,4 +183,37 @@ fn public_key_to_jwk(key_pair: &Ed25519KeyPair) -> Result<Value, Box<dyn std::er
 
     let jwk_value = serde_json::to_value(&jwk)?;
     Ok(jwk_value)
+}
+
+#[cfg(feature = "ES256")]
+fn public_key_to_jwk(file_path: &str) -> Result<Value, Box<dyn std::error::Error>> {
+    use base64::engine::general_purpose::URL_SAFE_NO_PAD;
+    use p256::{elliptic_curve::sec1::ToEncodedPoint as _, pkcs8::DecodePublicKey};
+
+    let secret_key = std::fs::read_to_string(file_path)?;
+    let public_key = p256::PublicKey::from_public_key_pem(&secret_key)?;
+    // 座標を取り出す (圧縮なしのポイントにする: to_encoded_point(false))
+    let encoded_point = public_key.to_encoded_point(false);
+    let x_bytes = encoded_point.x().ok_or("Failed to get X coordinate")?;
+    let y_bytes = encoded_point.y().ok_or("Failed to get Y coordinate")?;
+
+    // ---- (3) x, y を Base64URL (padding なし) でエンコード
+    let x = URL_SAFE_NO_PAD.encode(x_bytes);
+    let y = URL_SAFE_NO_PAD.encode(y_bytes);
+
+    // ---- (4) 必要なフィールドを揃えて JWK (公開鍵) を生成
+    // ES256(P-256) の JWK には "kty", "crv", "x", "y" が必須となります
+    // "alg" や "kid", "use", "key_ops" 等は必要に応じて追加してください
+    let jwk = json!({
+        "kty": "EC",
+        "crv": "P-256",
+        "x": x,
+        "y": y,
+        "alg": "ES256",
+        "use": "sig", // 署名用途の場合は例えばこう指定
+        // "kid": "任意のキーID",
+        // "key_ops": ["verify"], など
+    });
+
+    Ok(jwk)
 }

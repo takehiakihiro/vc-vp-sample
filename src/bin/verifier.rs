@@ -6,7 +6,10 @@ use std::{fs::File, io::Read};
 
 fn main() -> Result<()> {
     // Holderの公開鍵をファイルから読み込み
+    #[cfg(feature = "EdDSA")]
     const ISSUER_PUBLIC_KEY: &str = "issuer_public_key_ed25519.pem";
+    #[cfg(feature = "ES256")]
+    const ISSUER_PUBLIC_KEY: &str = "issuer_public_key_ES256.pem";
 
     // Holderから提出されたVP（署名付きJWTとして）
     let vp = std::fs::read_to_string("vp.jwt").unwrap();
@@ -16,13 +19,19 @@ fn main() -> Result<()> {
     let public_key = read_pem_file(ISSUER_PUBLIC_KEY)
         .map_err(|e| anyhow!("failed to read pem e={}", e.to_string()))?;
     println!("public_key: {:?}", public_key);
+    #[cfg(feature = "EdDSA")]
     let issuer_decoding_key = DecodingKey::from_ed_pem(&public_key)?;
+    #[cfg(feature = "ES256")]
+    let issuer_decoding_key = DecodingKey::from_ec_pem(&public_key)?;
     println!("issuer_decoding_key");
 
     let sd_jwt: SdJwt = SdJwt::parse(&vp)?;
 
     // Holder の公開鍵を SD-JWT の cnf から取り出す
+    #[cfg(feature = "EdDSA")]
     let mut validation = Validation::new(Algorithm::EdDSA);
+    #[cfg(feature = "ES256")]
+    let mut validation = Validation::new(Algorithm::ES256);
     validation.set_audience(&["fujita-app"]);
     let vc_token = jsonwebtoken::decode::<Value>(&sd_jwt.jwt, &issuer_decoding_key, &validation)?;
     println!("VC header={:?}", vc_token.header);
@@ -54,7 +63,10 @@ fn main() -> Result<()> {
 
     let vp_token = match sd_jwt.key_binding_jwt {
         Some(vp_jwt) => {
+            #[cfg(feature = "EdDSA")]
             let mut validation = Validation::new(Algorithm::EdDSA);
+            #[cfg(feature = "ES256")]
+            let mut validation = Validation::new(Algorithm::ES256);
             validation.set_audience(&["el-server"]);
             jsonwebtoken::decode::<Value>(&vp_jwt, &holder_decoding_key, &validation)?
         }
@@ -62,7 +74,7 @@ fn main() -> Result<()> {
     };
     println!("kb-jwt's header={:?}", vp_token.header);
     println!("kb-jwt's payload={:?}", vp_token.claims);
-    println!("");
+    println!();
 
     // VP の header の typ が kb+jwt であるかチェック
     match vp_token.header.typ {
@@ -107,7 +119,7 @@ fn main() -> Result<()> {
     Ok(())
 }
 
-///
+/// PEMファイルの読み込み
 fn read_pem_file(file_path: &str) -> Result<Vec<u8>, Box<dyn std::error::Error>> {
     let mut file = File::open(file_path)?;
     let mut contents = vec![];
@@ -117,8 +129,7 @@ fn read_pem_file(file_path: &str) -> Result<Vec<u8>, Box<dyn std::error::Error>>
     Ok(contents)
 }
 
-///
+/// JSONからJWK
 fn json_to_jwk(jwk: &Value) -> Result<Jwk> {
-    Ok(serde_json::from_value(jwk.clone())
-        .map_err(|e| anyhow!("failed to convert jwk e={}.", e))?)
+    serde_json::from_value(jwk.clone()).map_err(|e| anyhow!("failed to convert jwk e={}.", e))
 }

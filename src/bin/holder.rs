@@ -16,8 +16,14 @@ struct Claims {
 
 fn main() -> Result<(), Box<dyn Error>> {
     // 秘密鍵をファイルから読み込み
+    #[cfg(feature = "EdDSA")]
     const ISSUER_PUBLIC_KEY: &str = "issuer_public_key_ed25519.pem";
+    #[cfg(feature = "ES256")]
+    const ISSUER_PUBLIC_KEY: &str = "issuer_public_key_ES256.pem";
+    #[cfg(feature = "EdDSA")]
     const HOLDER_PRIVATE_KEY: &str = "holder_private_key_ed25519.pem";
+    #[cfg(feature = "ES256")]
+    const HOLDER_PRIVATE_KEY: &str = "holder_private_key_ES256_pkcs8.pem";
 
     let vc = std::fs::read_to_string("vc.jwt").unwrap();
 
@@ -26,14 +32,20 @@ fn main() -> Result<(), Box<dyn Error>> {
 
     let public_key = read_pem_file(ISSUER_PUBLIC_KEY)?;
     println!("public_key: {:?}", public_key);
+    #[cfg(feature = "EdDSA")]
     let decoding_key = DecodingKey::from_ed_pem(&public_key)?;
+    #[cfg(feature = "ES256")]
+    let decoding_key = DecodingKey::from_ec_pem(&public_key)?;
     println!("decoding_key");
+    #[cfg(feature = "EdDSA")]
     let mut validation = Validation::new(Algorithm::EdDSA);
+    #[cfg(feature = "ES256")]
+    let mut validation = Validation::new(Algorithm::ES256);
     validation.set_audience(&["fujita-app"]);
     let token_data = jsonwebtoken::decode::<Value>(&sd_jwt.jwt, &decoding_key, &validation)?;
     println!("sd-jwt's header={:?}", token_data.header);
     println!("sd-jwt's payload={:?}", token_data.claims);
-    println!("");
+    println!();
 
     // disclosures の中から、公開したいものを Base64url decode して中身を見て選別する
     let mut disclosures = Vec::new();
@@ -53,8 +65,8 @@ fn main() -> Result<(), Box<dyn Error>> {
                 if let Ok(json) = serde_json::from_str::<Value>(&decoded_str) {
                     println!("checking decoded={:?}, encoded={}", json, encoded_str);
                     // JSONが配列形式であり、2番目の要素が指定した文字列のいずれかに一致するかチェック
-                    if json.as_array().map_or(false, |arr| {
-                        arr.get(1).map_or(false, |second_element| {
+                    if json.as_array().is_some_and(|arr| {
+                        arr.get(1).is_some_and(|second_element| {
                             check_strings.contains(&second_element.as_str().unwrap_or(""))
                         })
                     }) {
@@ -78,7 +90,10 @@ fn main() -> Result<(), Box<dyn Error>> {
         0,
     );
 
+    #[cfg(feature = "EdDSA")]
     let mut header = Header::new(Algorithm::EdDSA);
+    #[cfg(feature = "ES256")]
+    let mut header = Header::new(Algorithm::ES256);
     header.typ = Some("kb+jwt".to_string());
 
     let binding = json!({});
@@ -112,22 +127,25 @@ fn main() -> Result<(), Box<dyn Error>> {
     payload.insert("exp".to_string(), Value::Number(val));
 
     let holder_private_key = std::fs::read(HOLDER_PRIVATE_KEY).unwrap();
+    #[cfg(feature = "EdDSA")]
     let encoding_key = EncodingKey::from_ed_pem(&holder_private_key)?;
+    #[cfg(feature = "ES256")]
+    let encoding_key = EncodingKey::from_ec_pem(&holder_private_key)?;
     println!("loaded signer's private key");
     let key_binding_jwt = jsonwebtoken::encode(&header, &payload, &encoding_key)?;
     println!("kb-jwt: {:?}", key_binding_jwt);
-    println!("");
+    println!();
 
     let sd_jwt: SdJwt = SdJwt::new(sd_jwt.jwt, disclosures.clone(), Some(key_binding_jwt));
     let sd_jwt: String = sd_jwt.presentation();
 
     println!("VP={:?}", sd_jwt);
-    std::fs::write("vp.jwt".to_string(), sd_jwt)?;
+    std::fs::write("vp.jwt", sd_jwt)?;
 
     Ok(())
 }
 
-///
+/// PEMファイルから読み取り
 fn read_pem_file(file_path: &str) -> Result<Vec<u8>, Box<dyn std::error::Error>> {
     let mut file = File::open(file_path)?;
     let mut contents = vec![];

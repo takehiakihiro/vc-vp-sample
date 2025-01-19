@@ -5,10 +5,16 @@ edition = "2021"
 
 # See more keys and their definitions at https://doc.rust-lang.org/cargo/reference/manifest.html
 
+[features]
+default = ["ES256"]
+ES256 = []
+EdDSA = []
+
 [dependencies]
 anyhow = "1.0"
 base64 = "0.22"
 jsonwebtoken = { version = "9.3", features = ["use_pem"] }
+p256 = "0.13.2"
 pem = "3.0"
 rand = "0.8"
 ring = "0.17"
