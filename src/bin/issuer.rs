@@ -20,6 +20,11 @@ fn main() -> Result<()> {
         None => "takehi".to_string(),
     };
 
+    let expires_days = match args.get(2) {
+        Some(v) => v.parse()?,
+        None => 7,
+    };
+
     #[cfg(feature = "EdDSA")]
     const ISSUER_PRIVATE_KEY: &str = "issuer_private_key_ed25519.pem";
     #[cfg(feature = "ES256")]
@@ -94,7 +99,7 @@ fn main() -> Result<()> {
     );
     payload.insert("iat".to_string(), Value::Number(val));
 
-    let expires_at = now + std::time::Duration::from_secs(7 * 24 * 60 * 60);
+    let expires_at = now + std::time::Duration::from_secs(expires_days * 24 * 60 * 60);
     let val = Number::from(
         expires_at
             .duration_since(std::time::SystemTime::UNIX_EPOCH)
@@ -186,16 +191,30 @@ fn public_key_to_jwk(file_path: &str) -> Result<Value, Box<dyn std::error::Error
 }
 
 #[cfg(feature = "ES256")]
-fn public_key_to_jwk(file_path: &str) -> Result<Value, Box<dyn std::error::Error>> {
+fn public_key_to_jwk(file_path: &str) -> Result<Value> {
     use base64::engine::general_purpose::URL_SAFE_NO_PAD;
     use p256::{elliptic_curve::sec1::ToEncodedPoint as _, pkcs8::DecodePublicKey};
 
     let secret_key = std::fs::read_to_string(file_path)?;
-    let public_key = p256::PublicKey::from_public_key_pem(&secret_key)?;
+    let public_key = p256::PublicKey::from_public_key_pem(&secret_key).inspect_err(|&e| {
+        eprintln!("failed convert public key from pem e={}", e);
+    })?;
     // 座標を取り出す (圧縮なしのポイントにする: to_encoded_point(false))
     let encoded_point = public_key.to_encoded_point(false);
-    let x_bytes = encoded_point.x().ok_or("Failed to get X coordinate")?;
-    let y_bytes = encoded_point.y().ok_or("Failed to get Y coordinate")?;
+    let x_bytes = encoded_point
+        .x()
+        .ok_or("Failed to get X coordinate")
+        .map_err(|e| {
+            eprintln!("failed get x from pubkey e={}", e);
+            anyhow!(e)
+        })?;
+    let y_bytes = encoded_point
+        .y()
+        .ok_or("Failed to get Y coordinate")
+        .map_err(|e| {
+            eprintln!("failed get y from pubkey e={}", e);
+            anyhow!(e)
+        })?;
 
     // ---- (3) x, y を Base64URL (padding なし) でエンコード
     let x = URL_SAFE_NO_PAD.encode(x_bytes);
