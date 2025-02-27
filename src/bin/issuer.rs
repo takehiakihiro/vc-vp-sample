@@ -45,7 +45,7 @@ fn main() -> Result<()> {
     let dummy = "dummy";
 
     let mut object = json!({
-      "id": id,
+      "did": id,
       "dummy": dummy,
     });
 
@@ -61,7 +61,7 @@ fn main() -> Result<()> {
 
     let mut encoder: SdObjectEncoder = object.try_into()?;
     let disclosures: Vec<Disclosure> = vec![
-        encoder.conceal("/id", None)?,
+        encoder.conceal("/did", None)?,
         encoder.conceal("/dummy", None)?,
     ];
 
