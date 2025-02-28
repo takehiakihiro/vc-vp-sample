@@ -13,6 +13,7 @@ EdDSA = []
 [dependencies]
 anyhow = "1.0"
 base64 = "0.22"
+josekit = "0.8"
 jsonwebtoken = { version = "9.3", features = ["use_pem"] }
 p256 = "0.13.2"
 pem = "3.0"
