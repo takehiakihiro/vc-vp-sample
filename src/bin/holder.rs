@@ -28,10 +28,10 @@ fn main() -> Result<(), Box<dyn Error>> {
     let vc = std::fs::read_to_string("vc.jwt").unwrap();
 
     let sd_jwt: SdJwt = SdJwt::parse(&vc)?;
-    println!("sd_jwt: {:?}", sd_jwt);
+    println!("sd_jwt: {sd_jwt:?}");
 
     let public_key = read_pem_file(ISSUER_PUBLIC_KEY)?;
-    println!("public_key: {:?}", public_key);
+    println!("public_key: {public_key:?}");
     #[cfg(feature = "EdDSA")]
     let decoding_key = DecodingKey::from_ed_pem(&public_key)?;
     #[cfg(feature = "ES256")]
@@ -63,7 +63,7 @@ fn main() -> Result<(), Box<dyn Error>> {
             if let Ok(decoded_str) = String::from_utf8(buffer) {
                 // JSONとしてパース
                 if let Ok(json) = serde_json::from_str::<Value>(&decoded_str) {
-                    println!("checking decoded={:?}, encoded={}", json, encoded_str);
+                    println!("checking decoded={json:?}, encoded={encoded_str}");
                     // JSONが配列形式であり、2番目の要素が指定した文字列のいずれかに一致するかチェック
                     if json.as_array().is_some_and(|arr| {
                         arr.get(1).is_some_and(|second_element| {
@@ -71,7 +71,7 @@ fn main() -> Result<(), Box<dyn Error>> {
                         })
                     }) {
                         // 条件を満たす場合、元のBase64urlエンコードされた文字列を保存
-                        println!("MATCH! decoded={:?}, encoded={}", json, encoded_str);
+                        println!("MATCH! decoded={json:?}, encoded={encoded_str}");
                         disclosures.push(encoded_str.to_string());
                     }
                 }
@@ -133,13 +133,13 @@ fn main() -> Result<(), Box<dyn Error>> {
     let encoding_key = EncodingKey::from_ec_pem(&holder_private_key)?;
     println!("loaded signer's private key");
     let key_binding_jwt = jsonwebtoken::encode(&header, &payload, &encoding_key)?;
-    println!("kb-jwt: {:?}", key_binding_jwt);
+    println!("kb-jwt: {key_binding_jwt:?}");
     println!();
 
     let sd_jwt: SdJwt = SdJwt::new(sd_jwt.jwt, disclosures.clone(), Some(key_binding_jwt));
     let sd_jwt: String = sd_jwt.presentation();
 
-    println!("VP={:?}", sd_jwt);
+    println!("VP={sd_jwt:?}");
     std::fs::write("vp.jwt", sd_jwt)?;
 
     Ok(())

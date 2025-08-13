@@ -26,7 +26,7 @@ fn main() -> Result<()> {
         use anyhow::anyhow;
         let pubkey_jwk = public_key_to_jwk(KEY)
             .map_err(|e| anyhow!("failed to convert to jwk e={}", e.to_string()))?;
-        println!("pubkey_jwk={}", pubkey_jwk);
+        println!("pubkey_jwk={pubkey_jwk}");
     }
 
     Ok(())

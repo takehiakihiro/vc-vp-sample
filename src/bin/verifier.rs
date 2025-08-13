@@ -18,7 +18,7 @@ fn main() -> Result<()> {
     // Extract the payload from the JWT of the SD-JWT after verifying the signature.
     let public_key = read_pem_file(ISSUER_PUBLIC_KEY)
         .map_err(|e| anyhow!("failed to read pem e={}", e.to_string()))?;
-    println!("public_key: {:?}", public_key);
+    println!("public_key: {public_key:?}");
     #[cfg(feature = "EdDSA")]
     let issuer_decoding_key = DecodingKey::from_ed_pem(&public_key)?;
     #[cfg(feature = "ES256")]
@@ -108,7 +108,7 @@ fn main() -> Result<()> {
     // Decode the payload by providing the disclosures that were parsed from the SD-JWT.
     let decoder = SdObjectDecoder::new_with_sha256();
     let obj = vc_token.claims.as_object().unwrap();
-    println!("obj={:?}", obj);
+    println!("obj={obj:?}");
     println!("disclosures len={}", sd_jwt.disclosures.len());
     let decoded = decoder.decode(obj, &sd_jwt.disclosures)?;
     println!(

@@ -38,7 +38,7 @@ fn main() -> Result<()> {
     // PEMファイルから秘密鍵を読み込み、公開鍵を取り出す
     let pubkey_jwk = public_key_to_jwk(HOLDER_KEY)
         .map_err(|e| anyhow!("failed to convert to jwk e={}", e.to_string()))?;
-    println!("pubkey_jwk={}", pubkey_jwk);
+    println!("pubkey_jwk={pubkey_jwk}");
 
     // ======================= Issuer part =======================
     let id = &account_name;
@@ -80,7 +80,7 @@ fn main() -> Result<()> {
     let mut header = Header::new(Algorithm::EdDSA);
     #[cfg(feature = "ES256")]
     let mut header = Header::new(Algorithm::ES256);
-    let token_type = format!("vc+{}", HEADER_TYP);
+    let token_type = format!("vc+{HEADER_TYP}");
     header.typ = Some(token_type);
 
     // Use the encoded object as a payload for the JWT.
@@ -130,7 +130,7 @@ fn main() -> Result<()> {
     // disclosures の配列の中身をランダムに並べ替える
     let sd_jwt: SdJwt = SdJwt::new(jwt, disclosures, None);
     let sd_jwt: String = sd_jwt.presentation();
-    println!("VC={}", sd_jwt);
+    println!("VC={sd_jwt}");
     std::fs::write("vc.jwt", sd_jwt)?;
 
     Ok(())
@@ -197,7 +197,7 @@ fn public_key_to_jwk(file_path: &str) -> Result<Value> {
 
     let secret_key = std::fs::read_to_string(file_path)?;
     let public_key = p256::PublicKey::from_public_key_pem(&secret_key).inspect_err(|&e| {
-        eprintln!("failed convert public key from pem e={}", e);
+        eprintln!("failed convert public key from pem e={e:?}");
     })?;
     // 座標を取り出す (圧縮なしのポイントにする: to_encoded_point(false))
     let encoded_point = public_key.to_encoded_point(false);
@@ -205,14 +205,14 @@ fn public_key_to_jwk(file_path: &str) -> Result<Value> {
         .x()
         .ok_or("Failed to get X coordinate")
         .map_err(|e| {
-            eprintln!("failed get x from pubkey e={}", e);
+            eprintln!("failed get x from pubkey e={e:?}");
             anyhow!(e)
         })?;
     let y_bytes = encoded_point
         .y()
         .ok_or("Failed to get Y coordinate")
         .map_err(|e| {
-            eprintln!("failed get y from pubkey e={}", e);
+            eprintln!("failed get y from pubkey e={e:?}");
             anyhow!(e)
         })?;
 

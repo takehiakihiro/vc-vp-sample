@@ -3,3 +3,4 @@ vc.jwt
 vp.jwt
 Cargo.lock
 .vscode
+jwks.json

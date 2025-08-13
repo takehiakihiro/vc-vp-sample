@@ -158,7 +158,7 @@ fn main() -> Result<()> {
     // PEMファイルから秘密鍵を読み込み、公開鍵を取り出す
     let pubkey_jwk = public_key_to_jwk(HOLDER_KEY)
         .map_err(|e| anyhow!("failed to convert to jwk e={}", e.to_string()))?;
-    println!("pubkey_jwk={}", pubkey_jwk);
+    println!("pubkey_jwk={pubkey_jwk}");
     let jwk = josekit::jwk::Jwk::from_map(pubkey_jwk.as_object().unwrap().clone()).unwrap();
 
     let params = GenerateVCParams {
@@ -175,11 +175,11 @@ fn main() -> Result<()> {
     };
     match generate_sd_jwt_vc(params) {
         Ok(vc) => {
-            println!("VC={}", vc);
+            println!("VC={vc}");
             std::fs::write("vc.jwt", vc)?;
         }
         Err(e) => {
-            eprintln!("{}", e);
+            eprintln!("{e:?}");
         }
     }
 
@@ -247,7 +247,7 @@ fn public_key_to_jwk(file_path: &str) -> Result<Value> {
 
     let secret_key = std::fs::read_to_string(file_path)?;
     let public_key = p256::PublicKey::from_public_key_pem(&secret_key).inspect_err(|&e| {
-        eprintln!("failed convert public key from pem e={}", e);
+        eprintln!("failed convert public key from pem e={e:?}");
     })?;
     // 座標を取り出す (圧縮なしのポイントにする: to_encoded_point(false))
     let encoded_point = public_key.to_encoded_point(false);
@@ -255,14 +255,14 @@ fn public_key_to_jwk(file_path: &str) -> Result<Value> {
         .x()
         .ok_or("Failed to get X coordinate")
         .map_err(|e| {
-            eprintln!("failed get x from pubkey e={}", e);
+            eprintln!("failed get x from pubkey e={e:?}");
             anyhow!(e)
         })?;
     let y_bytes = encoded_point
         .y()
         .ok_or("Failed to get Y coordinate")
         .map_err(|e| {
-            eprintln!("failed get y from pubkey e={}", e);
+            eprintln!("failed get y from pubkey e={e:?}");
             anyhow!(e)
         })?;
 
