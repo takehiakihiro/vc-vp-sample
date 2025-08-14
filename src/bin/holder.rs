@@ -52,7 +52,7 @@ fn main() -> Result<(), Box<dyn Error>> {
 
     for encoded_str in sd_jwt.disclosures {
         let mut buffer = Vec::<u8>::new();
-        let check_strings = ["id"];
+        let check_strings = ["did"];
 
         // Base64urlデコードを試みる
         if URL_SAFE_NO_PAD

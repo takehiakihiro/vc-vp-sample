@@ -1,10 +1,7 @@
 use anyhow::{anyhow, Result};
 use base64::Engine;
 use jsonwebtoken::{Algorithm, EncodingKey, Header};
-use rand::{
-    seq::SliceRandom, // SliceRandomトレイトをインポート
-    thread_rng,       // 乱数生成器をインポート
-};
+use rand::{rng, seq::SliceRandom};
 #[cfg(feature = "EdDSA")]
 use ring::signature::{Ed25519KeyPair, KeyPair};
 use sd_jwt_payload::{Disclosure, SdJwt, SdObjectEncoder, HEADER_TYP};
@@ -123,7 +120,7 @@ fn main() -> Result<()> {
         .collect();
 
     // 乱数生成器を取得
-    let mut rng = thread_rng();
+    let mut rng = rng();
     // ベクタの中身をランダムに入れ替える
     disclosures.shuffle(&mut rng);
 
