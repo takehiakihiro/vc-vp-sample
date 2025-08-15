@@ -68,7 +68,10 @@ fn generate_sd_jwt_vc(params: GenerateVCParams) -> anyhow::Result<String> {
     let mut header = JwsHeader::new();
     let token_type = format!("vc+{}", sd_jwt_payload::HEADER_TYP);
     header.set_token_type(token_type);
+    #[cfg(feature = "EdDSA")]
     header.set_algorithm("EdDSA"); // EdDSA署名アルゴリズムの指定
+    #[cfg(feature = "ES256")]
+    header.set_algorithm("ES256"); // EdDSA署名アルゴリズムの指定
 
     // Use the encoded object as a payload for the JWT.
     let mut payload = JwtPayload::from_map(encoder.object()?.clone())?;
@@ -101,7 +104,7 @@ fn generate_sd_jwt_vc(params: GenerateVCParams) -> anyhow::Result<String> {
         .collect();
 
     // 乱数生成器を取得
-    let mut rng = rand::thread_rng();
+    let mut rng = rand::rng();
     // ベクタの中身をランダムに入れ替える
     disclosures.shuffle(&mut rng);
 
