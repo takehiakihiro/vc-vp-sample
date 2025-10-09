@@ -9,6 +9,7 @@ edition = "2021"
 default = ["ES256"]
 ES256 = []
 EdDSA = []
+patientid = []
 
 [dependencies]
 anyhow = "1.0"
