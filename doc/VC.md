@@ -7,14 +7,16 @@
 ## 目次
 
 1. [まずは5分：VCの基本](#まずは5分vcの基本)
-2. [VCで認証はどう行うか（何をどう使う？）](#vcで認証はどう行うか何をどう使う)
-3. [OAuth2 / OIDC / パスキーとの違い](#oauth2--oidc--パスキーとの違い)
-4. [具体的な認証ユースケース集](#具体的な認証ユースケース集)
-5. [設計の要点と落とし穴（チェックリスト）](#設計の要点と落とし穴チェックリスト)
-6. [最小構成のPoC手順（社内向け）](#最小構成のpoc手順社内向け)
-7. [用語ミニ辞典](#用語ミニ辞典)
-8. [参考規格・仕様（読み物）](#参考規格仕様読み物)
-9. [付録：自己署名VC（Self-signed / Self-attested VC）](#付録自己署名vcself-signed--self-attested-vc)
+2. [DID基礎とVCとの関係（DIDは必須？代替手段は？）](#did基礎とvcとの関係didは必須代替手段は)
+3. [VCで認証はどう行うか（何をどう使う？）](#vcで認証はどう行うか何をどう使う)
+4. [認証と認可の関係（違いとVC/OAuthの役割）](#認証と認可の関係違いとvcoauthの役割)
+5. [OAuth2 / OIDC / パスキーとの違い](#oauth2--oidc--パスキーとの違い)
+6. [具体的な認証ユースケース集](#具体的な認証ユースケース集)
+7. [設計の要点と落とし穴（チェックリスト）](#設計の要点と落とし穴チェックリスト)
+8. [最小構成のPoC手順（社内向け）](#最小構成のpoc手順社内向け)
+9. [用語ミニ辞典](#用語ミニ辞典)
+10. [参考規格・仕様（読み物）](#参考規格仕様読み物)
+11. [付録：自己署名VC（Self-signed / Self-attested VC）](#付録自己署名vcself-signed--self-attested-vc)
 
 ---
 
@@ -44,6 +46,42 @@
 * **OIDC4VP**：VCの**提示**をOIDCフローでやりとり
 * **OID4VCI**：VCの**発行**を標準化
 * **SIOPv2**：ユーザー自身が**自己発行のIDトークン**を返せる拡張。OIDC4VPと組み合わせ可
+
+---
+
+## DID基礎とVCとの関係（DIDは必須？代替手段は？）
+
+### DIDとは
+
+* **Decentralized Identifier**：中央集権的な登録局に依存せず、**識別子 → DIDドキュメント**（公開鍵・検証法・サービスエンドポイント等）へ**解決（resolve）**できる仕組み。
+* 代表的なメソッド：`did:web`（HTTPS配下でホスト）、`did:key`（鍵から派生、軽量）、`did:ion`/`did:pkh`など。
+* **ペアワイズDID**：サービスごとに異なるDIDを使い分け、**相関リスク**を下げられる。
+
+### VCにDIDは必須？
+
+* **必須ではありません。** W3C VC DM 2.0では、
+
+  * **issuer** は **URI**（`https://...` でも **DID** でも可）。
+  * **credentialSubject.id** は **DIDでもURLでも、省略も可**（オフライン資格やmDLなど）。
+* 署名検証のための**公開鍵の見つけ方**としてDIDを使うと便利、という位置づけです。
+
+### DIDを使う利点
+
+* **鍵のローテーション/失効**を**DIDドキュメント更新**で表現できる。
+* **オフライン検証**や**相互運用**に強い（VC/VPだけで鍵解決の道筋を持てる）。
+* **プライバシー配慮**（ペアワイズ）と**分散運用**（レジストリ非依存）。
+
+### DIDを使わない構成（代替）
+
+* **HTTPS + JWKS**：Issuer=`https://id.example.com`、公開鍵は **`/.well-known/jwks.json`** や **OIDC Discovery**。**VC-JWT / SD-JWT VC**と相性◎。
+* **X.509系**：**mdoc/mDL**は**証明書チェーン**で信頼を表現（公的CAルート）。
+* **固定鍵 / `did:key`**：PoCや閉域で軽量。鍵ローテーションは別経路で管理。
+
+### 選定ガイド（目安）
+
+* 既に**自社ドメイン**と**OIDC運用**がある → **HTTPS+JWKS**が実装容易。
+* **相関リスクを強く抑えたい/長期的な脱中央** → **DID（`did:web`から開始）**。
+* **公的資格/オフライン提示** → **X.509系（mdoc）**を検討。
 
 ---
 
@@ -81,6 +119,33 @@
 * **`aud`/`nonce`**により**その場限り**の提示に固定。
 * **Issuer署名 + Status（失効）確認 + Trust Registry**で**信頼性**を担保。
 * **選択的開示**で**必要最小限**の属性のみ提示。
+
+---
+
+## 認証と認可の関係（違いとVC/OAuthの役割）
+
+### 定義の整理
+
+* **認証（Authentication）**：アクセス要求者が**誰か**、あるいは**要求条件を満たすか**を確かめる行為（例：本人鍵の所持証明、所属=営業部）。
+* **認可（Authorization）**：認証結果やポリシーに基づき、**何ができるか**（操作・リソース）を決定。
+
+### VCを使うときの分担
+
+1. **認証**：`OIDC4VP`等で**VP**を受け取り、**PoP署名（鍵所持）**と**属性条件**を検証。
+2. **権限決定**：検証済みVCの**属性（role, dept, assurance）**を**RBAC/ABAC**で評価。
+3. **トークン発行**：必要に応じて**OAuth2**で**access token**を発行し、権限（scope/claims）をエンコード。
+4. **トークン束縛**：**DPoP/mTLS**で**盗難耐性**を付与。
+
+### ありがちな落とし穴
+
+* **VC=権限証明と誤解**：VC自体は**属性の証明**。APIアクセスには**短命トークン**へ落とし込むのが実践的。
+* **`nonce`/`aud`省略**：VPに**文脈固定**が無いと**リプレイ/なりすまし**の原因に。
+* **失効/Status未考慮**：ロール変更や離職が**即時反映**されない。
+
+### 小さな設計例
+
+* ログイン：**OIDC4VP**で「社員VC（有効）」の提示→**セッション確立**。
+* API：セッション→**Tokenエンドポイント**で**access token**発行（`scope=read:crm` 等）→**DPoP**で束縛。
 
 ---
 
@@ -182,7 +247,7 @@
 * **VC（Verifiable Credential）**：検証可能なデジタル証明書
 * **VP（Verifiable Presentation）**：その場で作る提示パッケージ（`aud`/`nonce`で文脈固定）
 * **Issuer / Holder / Verifier**：発行者 / 保持者（ウォレット） / 検証者（RP）
-* **DID / DID Document**：分散IDと公開鍵メタデータ
+* **DID / DID Document**：分散IDと公開鍵メタデータ（※**VCでDIDは必須ではない**。Issuerは`https://`やDIDで表現可、`credentialSubject.id`は**DID/URL/省略**のいずれも可）
 * **Trust Registry**：受け入れるIssuer・スキーマ一覧
 * **Status（失効）**：VCの有効/失効/一時停止状態
 * **SD-JWT / BBS+**：選択的開示（最小限の属性だけ開示）
@@ -194,6 +259,7 @@
 ## 参考規格・仕様（読み物）
 
 * W3C **Verifiable Credentials Data Model 2.0**
+* W3C **DID Core** / **DID Resolution**
 * OpenID Foundation **OpenID for Verifiable Presentations (OIDC4VP)**
 * OpenID Foundation **OpenID for Verifiable Credential Issuance (OID4VCI)**
 * OpenID Foundation **SIOPv2**
