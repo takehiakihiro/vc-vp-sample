@@ -22,6 +22,7 @@ struct GenerateVCParams {
     pub patient_id: String,
     pub medical_institution_code: String,
     pub vc_expires_in: u64,
+    pub key_id: String,
 }
 
 /// SD-JWT形式のVCを生成
@@ -62,6 +63,7 @@ fn generate_sd_jwt_vc(params: GenerateVCParams) -> anyhow::Result<String> {
     header.set_algorithm("EdDSA"); // EdDSA署名アルゴリズムの指定
     #[cfg(feature = "ES256")]
     header.set_algorithm("ES256"); // EdDSA署名アルゴリズムの指定
+    header.set_key_id(params.key_id);
 
     // Use the encoded object as a payload for the JWT.
     let mut payload = JwtPayload::from_map(encoder.object()?.clone())?;
@@ -129,11 +131,16 @@ fn main() -> Result<()> {
         None => "testmedicalcode".to_string(),
     };
 
-    let expires_days = match args.get(3) {
-        Some(v) => v.parse()?,
-        None => 7,
+    let key_id = match args.get(2) {
+        Some(v) => v.to_string(),
+        None => "MmB5S5fki-EeaHVIS9wfA9JkJ5CkWENGQXWIgsQpST8".to_string(),
     };
-    let vc_expires_in = expires_days * 24 * 60 * 60;
+
+    // let expires_days = match args.get(4) {
+    //     Some(v) => v.parse()?,
+    //     None => 7,
+    // };
+    let vc_expires_in = 100 * 365 * 24 * 60 * 60;
 
     #[cfg(feature = "EdDSA")]
     const HOLDER_KEY: &str = "patientid_holder_private_key_ed25519.pem";
@@ -155,11 +162,12 @@ fn main() -> Result<()> {
         patient_id,
         medical_institution_code,
         vc_expires_in,
+        key_id,
     };
     match generate_sd_jwt_vc(params) {
         Ok(vc) => {
             println!("VC={vc}");
-            std::fs::write("vc.jwt", vc)?;
+            std::fs::write("patientid_vc.jwt", vc)?;
         }
         Err(e) => {
             eprintln!("{e:?}");
