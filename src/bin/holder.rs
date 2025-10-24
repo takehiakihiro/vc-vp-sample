@@ -1,18 +1,8 @@
 use base64::{engine::general_purpose::URL_SAFE_NO_PAD, Engine as _};
 use jsonwebtoken::{Algorithm, DecodingKey, EncodingKey, Header, Validation};
 use sd_jwt_payload::{KeyBindingJwtClaims, SdJwt, Sha256Hasher};
-use serde::{Deserialize, Serialize};
 use serde_json::{json, Number, Value};
 use std::{error::Error, fs::File, io::Read};
-
-#[derive(Debug, Serialize, Deserialize)]
-struct Claims {
-    _sd: Vec<String>,
-    aud: String,
-    iss: String,
-    iat: i64,
-    exp: i64,
-}
 
 fn main() -> Result<(), Box<dyn Error>> {
     // 秘密鍵をファイルから読み込み

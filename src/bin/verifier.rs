@@ -16,8 +16,8 @@ fn main() -> Result<()> {
 
     // Decoding the SD-JWT
     // Extract the payload from the JWT of the SD-JWT after verifying the signature.
-    let public_key = read_pem_file(ISSUER_PUBLIC_KEY)
-        .map_err(|e| anyhow!("failed to read pem e={}", e.to_string()))?;
+    let public_key =
+        read_pem_file(ISSUER_PUBLIC_KEY).map_err(|e| anyhow!("failed to read pem e={e:?}"))?;
     println!("public_key: {public_key:?}");
     #[cfg(feature = "EdDSA")]
     let issuer_decoding_key = DecodingKey::from_ed_pem(&public_key)?;

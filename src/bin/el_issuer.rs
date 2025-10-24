@@ -25,6 +25,7 @@ struct GenerateVCParams {
     pub dns_addresses: Vec<String>,
     pub group_name: String,
     pub vc_expires_in: u64,
+    pub key_id: String,
 }
 
 /// SD-JWT形式のVCを生成
@@ -43,10 +44,10 @@ fn generate_sd_jwt_vc(params: GenerateVCParams) -> anyhow::Result<String> {
 
     let mut inner_jwk = serde_json::Map::new();
     let jwk_obj = serde_json::from_str(&params.jwk.to_string())
-        .map_err(|e| anyhow!("failed to convert serde Value from JWK: {}", e.to_string()))?;
+        .map_err(|e| anyhow!("failed to convert serde Value from JWK: {e:?}"))?;
     inner_jwk.insert("jwk".to_string(), jwk_obj);
     let cnf = serde_json::to_value(inner_jwk)
-        .map_err(|e| anyhow!("failed to add JWK to serde object: {}", e.to_string()))?;
+        .map_err(|e| anyhow!("failed to add JWK to serde object: {e:?}"))?;
 
     if let Value::Object(ref mut map) = object {
         map.insert("cnf".to_string(), cnf);
@@ -72,6 +73,7 @@ fn generate_sd_jwt_vc(params: GenerateVCParams) -> anyhow::Result<String> {
     header.set_algorithm("EdDSA"); // EdDSA署名アルゴリズムの指定
     #[cfg(feature = "ES256")]
     header.set_algorithm("ES256"); // EdDSA署名アルゴリズムの指定
+    header.set_key_id(params.key_id);
 
     // Use the encoded object as a payload for the JWT.
     let mut payload = JwtPayload::from_map(encoder.object()?.clone())?;
@@ -87,15 +89,15 @@ fn generate_sd_jwt_vc(params: GenerateVCParams) -> anyhow::Result<String> {
     #[cfg(feature = "EdDSA")]
     let signer = EdDSA
         .signer_from_pem(params.private_key)
-        .map_err(|e| anyhow!("failed to convert signer from pem: {}", e.to_string()))?;
+        .map_err(|e| anyhow!("failed to convert signer from pem: {e:?}"))?;
     #[cfg(feature = "ES256")]
     let signer = ES256
         .signer_from_pem(params.private_key)
-        .map_err(|e| anyhow!("failed to convert signer from pem: {}", e.to_string()))?;
+        .map_err(|e| anyhow!("failed to convert signer from pem: {e:?}"))?;
 
     println!("loaded signer's private key");
     let jwt = jwt::encode_with_signer(&payload, &header, &signer)
-        .map_err(|e| anyhow!("failed to encode with signer: {}", e.to_string()))?;
+        .map_err(|e| anyhow!("failed to encode with signer: {e:?}"))?;
 
     // Create an SD_JWT by collecting the disclosures and creating an `SdJwt` instance.
     let mut disclosures: Vec<String> = disclosures
@@ -152,6 +154,11 @@ fn main() -> Result<()> {
         None => "10.0.0.100".to_string(),
     };
 
+    let key_id = match args.get(4) {
+        Some(v) => v.to_string(),
+        None => "VCVk4e6-JsLk_Wrv6Z2OFQ-4G2ejbvw0JAAWCqJfJus".to_string(),
+    };
+
     #[cfg(feature = "EdDSA")]
     const HOLDER_KEY: &str = "el_holder_private_key_ed25519.pem";
     #[cfg(feature = "ES256")]
@@ -159,8 +166,8 @@ fn main() -> Result<()> {
 
     // ======================= Holder part =======================
     // PEMファイルから秘密鍵を読み込み、公開鍵を取り出す
-    let pubkey_jwk = public_key_to_jwk(HOLDER_KEY)
-        .map_err(|e| anyhow!("failed to convert to jwk e={}", e.to_string()))?;
+    let pubkey_jwk =
+        public_key_to_jwk(HOLDER_KEY).map_err(|e| anyhow!("failed to convert to jwk e={e:?}"))?;
     println!("pubkey_jwk={pubkey_jwk}");
     let jwk = josekit::jwk::Jwk::from_map(pubkey_jwk.as_object().unwrap().clone()).unwrap();
 
@@ -175,6 +182,7 @@ fn main() -> Result<()> {
         dns_addresses,
         group_name: group,
         vc_expires_in,
+        key_id,
     };
     match generate_sd_jwt_vc(params) {
         Ok(vc) => {

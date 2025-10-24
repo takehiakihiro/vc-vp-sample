@@ -37,10 +37,10 @@ fn generate_sd_jwt_vc(params: GenerateVCParams) -> anyhow::Result<String> {
 
     let mut inner_jwk = serde_json::Map::new();
     let jwk_obj = serde_json::from_str(&params.jwk.to_string())
-        .map_err(|e| anyhow!("failed to convert serde Value from JWK: {}", e.to_string()))?;
+        .map_err(|e| anyhow!("failed to convert serde Value from JWK: {e:?}"))?;
     inner_jwk.insert("jwk".to_string(), jwk_obj);
     let cnf = serde_json::to_value(inner_jwk)
-        .map_err(|e| anyhow!("failed to add JWK to serde object: {}", e.to_string()))?;
+        .map_err(|e| anyhow!("failed to add JWK to serde object: {e:?}"))?;
 
     if let Value::Object(ref mut map) = object {
         map.insert("cnf".to_string(), cnf);
@@ -79,15 +79,15 @@ fn generate_sd_jwt_vc(params: GenerateVCParams) -> anyhow::Result<String> {
     #[cfg(feature = "EdDSA")]
     let signer = EdDSA
         .signer_from_pem(params.private_key)
-        .map_err(|e| anyhow!("failed to convert signer from pem: {}", e.to_string()))?;
+        .map_err(|e| anyhow!("failed to convert signer from pem: {e:?}"))?;
     #[cfg(feature = "ES256")]
     let signer = ES256
         .signer_from_pem(params.private_key)
-        .map_err(|e| anyhow!("failed to convert signer from pem: {}", e.to_string()))?;
+        .map_err(|e| anyhow!("failed to convert signer from pem: {e:?}"))?;
 
     println!("loaded signer's private key");
     let jwt = jwt::encode_with_signer(&payload, &header, &signer)
-        .map_err(|e| anyhow!("failed to encode with signer: {}", e.to_string()))?;
+        .map_err(|e| anyhow!("failed to encode with signer: {e:?}"))?;
 
     // Create an SD_JWT by collecting the disclosures and creating an `SdJwt` instance.
     let mut disclosures: Vec<String> = disclosures
@@ -149,8 +149,8 @@ fn main() -> Result<()> {
 
     // ======================= Holder part =======================
     // PEMファイルから秘密鍵を読み込み、公開鍵を取り出す
-    let pubkey_jwk = public_key_to_jwk(HOLDER_KEY)
-        .map_err(|e| anyhow!("failed to convert to jwk e={}", e.to_string()))?;
+    let pubkey_jwk =
+        public_key_to_jwk(HOLDER_KEY).map_err(|e| anyhow!("failed to convert to jwk e={e:?}"))?;
     println!("pubkey_jwk={pubkey_jwk}");
     let jwk = josekit::jwk::Jwk::from_map(pubkey_jwk.as_object().unwrap().clone()).unwrap();
 
