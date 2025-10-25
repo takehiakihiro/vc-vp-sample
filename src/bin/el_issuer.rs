@@ -135,6 +135,13 @@ fn main() -> Result<()> {
     let dns_addresses = parse_split_string(&dns_addresses);
     let group = env::var("GROUP").expect("GROUP must be set");
 
+    #[cfg(feature = "EdDSA")]
+    let holder_key = env::var("HOLDER_PRIV_KEY")
+        .unwrap_or_else(|_e| "el_holder_private_key_ed25519.pem".to_string());
+    #[cfg(feature = "ES256")]
+    let holder_key = env::var("HOLDER_PRIV_KEY")
+        .unwrap_or_else(|_e| "el_holder_public_key_ES256.pem".to_string());
+
     let args: Vec<String> = env::args().collect();
 
     // 第一引数が存在するか確認
@@ -159,15 +166,10 @@ fn main() -> Result<()> {
         None => "VCVk4e6-JsLk_Wrv6Z2OFQ-4G2ejbvw0JAAWCqJfJus".to_string(),
     };
 
-    #[cfg(feature = "EdDSA")]
-    const HOLDER_KEY: &str = "el_holder_private_key_ed25519.pem";
-    #[cfg(feature = "ES256")]
-    const HOLDER_KEY: &str = "el_holder_public_key_ES256.pem";
-
     // ======================= Holder part =======================
     // PEMファイルから秘密鍵を読み込み、公開鍵を取り出す
     let pubkey_jwk =
-        public_key_to_jwk(HOLDER_KEY).map_err(|e| anyhow!("failed to convert to jwk e={e:?}"))?;
+        public_key_to_jwk(&holder_key).map_err(|e| anyhow!("failed to convert to jwk e={e:?}"))?;
     println!("pubkey_jwk={pubkey_jwk}");
     let jwk = josekit::jwk::Jwk::from_map(pubkey_jwk.as_object().unwrap().clone()).unwrap();
 
